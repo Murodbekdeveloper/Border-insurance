@@ -1,0 +1,336 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { VehicleFormData, vehicleSchema } from '@/lib/validation/schemas';
+import { CITIES, VEHICLE_TYPES } from '@/lib/constants';
+import { getVehicleDefaultsForModel, getWeightCategoryForVehicleType } from '@/lib/carModels';
+import { maskAlnumUpper, maskDigits, maskPhoneUZ, maskPlateNumber, maskYear } from '@/lib/masks';
+import { createVehicle } from '@/lib/api/vehicles';
+import { extractVehicleDocument, OcrNotConfiguredError } from '@/lib/api/ocr';
+import { useAuthStore } from '@/store/authStore';
+import { useApplicationStore } from '@/store/applicationStore';
+import { toast } from '@/store/toastStore';
+import { AuthGuard } from '@/components/AuthGuard';
+import { WizardShell } from '@/components/WizardShell';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { BrandModelFields } from '@/components/ui/BrandModelFields';
+import { Button } from '@/components/ui/Button';
+import { ImageUploadCard } from '@/components/ui/ImageUploadCard';
+
+const cityOptions = CITIES.map((c) => ({ value: c, label: c }));
+
+function VehicleInfoContent() {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const { vehicle, residentType, setVehicle } = useApplicationStore();
+  // CITIES ro'yxati faqat O'zbekiston shaharlari/viloyatlarini o'z ichiga oladi —
+  // chet el fuqarosi shu ro'yxatdagi biror shahardan bo'lishi shart emas, shuning
+  // uchun norezidentlar uchun bu maydonni erkin matn sifatida kiritish imkonini beramiz.
+  const isForeign = residentType === 'non_resident';
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting, isValid },
+  } = useForm<VehicleFormData>({
+    resolver: zodResolver(vehicleSchema),
+    mode: 'onChange',
+    defaultValues: vehicle ?? {
+      weightCategory: 'yengil',
+      registrationCountry: residentType === 'non_resident' ? 'Xorij' : 'UZ',
+      phone: user?.phone && user.phone.startsWith('+998') ? user.phone : '+998',
+      ownerIsApplicant: true,
+    },
+  });
+
+  const ownerIsApplicant = watch('ownerIsApplicant');
+
+  const onSubmit = async (data: VehicleFormData) => {
+    if (!user) return;
+    try {
+      const created = await createVehicle(data);
+      setVehicle(data, created.id);
+      router.push('/driver-restriction');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Transport ma\'lumotlarini saqlashda xatolik yuz berdi');
+    }
+  };
+
+  const handleExtractDocument = async (file: File) => {
+    try {
+      const fields = await extractVehicleDocument(file);
+      const known: (keyof VehicleFormData)[] = [
+        'plateNumber',
+        'techPassportSeries',
+        'techPassportNumber',
+        'techPassportIssueDate',
+      ];
+      let applied = 0;
+      for (const key of known) {
+        const value = fields[key as keyof typeof fields];
+        if (value) {
+          setValue(key, value, { shouldValidate: true, shouldDirty: true });
+          applied += 1;
+        }
+      }
+      if (applied === 0) {
+        return { status: 'error' as const, message: 'Rasmdan ma\'lumot aniqlanmadi. Iltimos, maydonlarni qo\'lda to\'ldiring.' };
+      }
+      return { status: 'success' as const, message: 'Ma\'lumotlar aniqlandi va tegishli maydonlarga to\'ldirildi. Iltimos, tekshirib chiqing.' };
+    } catch (err) {
+      if (err instanceof OcrNotConfiguredError) {
+        return {
+          status: 'not_configured' as const,
+          message: 'Google Vision API hali ulanmagan. Hozircha ma\'lumotlarni pastdagi maydonlarga qo\'lda kiriting.',
+        };
+      }
+      return { status: 'error' as const, message: 'Rasmni tahlil qilishda xatolik yuz berdi' };
+    }
+  };
+
+  return (
+    <WizardShell currentStep={1} title="Transport vositasi ma'lumotlari" subtitle="Avtomobilingiz haqida ma'lumotlarni to'ldiring" wide>
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+        <ImageUploadCard
+          label="Texpasport rasmi (ixtiyoriy)"
+          description="Rasmni yuklang — Google Vision API ulanganda ma'lumotlar avtomatik to'ldiriladi"
+          onExtract={handleExtractDocument}
+        />
+
+        <div className="grid grid-cols-2 gap-5">
+          <Controller
+            control={control}
+            name="weightCategory"
+            render={({ field }) => (
+              <ToggleSwitch
+                label="Og'irlik toifasi"
+                value={field.value ?? null}
+                onChange={field.onChange}
+                error={errors.weightCategory?.message}
+                options={[
+                  { value: 'og\'ir', label: 'Og\'ir' },
+                  { value: 'yengil', label: 'Yengil' },
+                ]}
+              />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="registrationCountry"
+            render={({ field }) => (
+              <ToggleSwitch
+                label="Ro'yxatga olingan davlat"
+                value={field.value ?? null}
+                onChange={field.onChange}
+                error={errors.registrationCountry?.message}
+                options={[
+                  { value: 'UZ', label: 'UZ' },
+                  { value: 'Xorij', label: 'Xorij' },
+                ]}
+              />
+            )}
+          />
+        </div>
+
+        <Input
+          label="Davlat raqami"
+          placeholder="01 A 123 AA"
+          error={errors.plateNumber?.message}
+          {...register('plateNumber')}
+          onChange={(e) => setValue('plateNumber', maskPlateNumber(e.target.value), { shouldValidate: true, shouldDirty: true })}
+        />
+
+        <div className="grid grid-cols-2 gap-5">
+          <Input
+            label="Texpasport seriyasi"
+            placeholder="AAB"
+            error={errors.techPassportSeries?.message}
+            {...register('techPassportSeries')}
+            onChange={(e) => setValue('techPassportSeries', maskAlnumUpper(e.target.value, 4), { shouldValidate: true, shouldDirty: true })}
+          />
+          <Input
+            label="Texpasport raqami"
+            placeholder="1234567"
+            inputMode="numeric"
+            error={errors.techPassportNumber?.message}
+            {...register('techPassportNumber')}
+            onChange={(e) => setValue('techPassportNumber', maskDigits(e.target.value, 7), { shouldValidate: true, shouldDirty: true })}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-5">
+          <Controller
+            control={control}
+            name="model"
+            render={({ field }) => (
+              <BrandModelFields
+                value={field.value ?? ''}
+                onChange={(v) => {
+                  field.onChange(v);
+                  // Model asosida transport turi va og'irlik toifasini avtomatik
+                  // to'ldiramiz — foydalanuvchi shu ma'lumotni ikki marta kiritmasin
+                  // (mobil ilovadagi xatti-harakat bilan bir xil).
+                  const defaults = getVehicleDefaultsForModel(v);
+                  setValue('vehicleType', defaults.vehicleType, { shouldValidate: true, shouldDirty: true });
+                  setValue('weightCategory', defaults.weightCategory, { shouldValidate: true, shouldDirty: true });
+                }}
+                onBlur={field.onBlur}
+                error={errors.model?.message}
+              />
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-5">
+          <Select
+            label="Transport turi"
+            options={VEHICLE_TYPES}
+            placeholder="Transport turini tanlang"
+            error={errors.vehicleType?.message}
+            {...register('vehicleType', {
+              onChange: (e) => {
+                // Og'irlik toifasi alohida so'ralmaydi — transport turidan
+                // to'g'ridan-to'g'ri kelib chiqadi (foydalanuvchi buni qo'lda
+                // o'zgartirsa ham, model orqali qo'yilgan taxminiy qiymat yangi
+                // tanlovga mos ravishda qayta hisoblanadi).
+                setValue('weightCategory', getWeightCategoryForVehicleType(e.target.value), { shouldValidate: true, shouldDirty: true });
+              },
+            })}
+          />
+          <Input
+            label="Texpasport berilgan sana"
+            type="date"
+            max={new Date().toISOString().split('T')[0]}
+            error={errors.techPassportIssueDate?.message}
+            {...register('techPassportIssueDate')}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-5">
+          <Input
+            label="Chiqarilgan yili"
+            inputMode="numeric"
+            placeholder="2020"
+            error={errors.manufactureYear?.message}
+            {...register('manufactureYear')}
+            onChange={(e) => setValue('manufactureYear', maskYear(e.target.value), { shouldValidate: true, shouldDirty: true })}
+          />
+          <Input
+            label="Kuzov raqami"
+            placeholder="VIN / kuzov raqami"
+            error={errors.bodyNumber?.message}
+            {...register('bodyNumber')}
+            onChange={(e) => setValue('bodyNumber', maskAlnumUpper(e.target.value, 17), { shouldValidate: true, shouldDirty: true })}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-5">
+          <Input
+            label="Dvigatel raqami"
+            placeholder="Dvigatel raqami"
+            error={errors.engineNumber?.message}
+            {...register('engineNumber')}
+            onChange={(e) => setValue('engineNumber', maskAlnumUpper(e.target.value, 17), { shouldValidate: true, shouldDirty: true })}
+          />
+          {isForeign ? (
+            <Input
+              label="Shahar"
+              placeholder="Shahar nomini kiriting"
+              error={errors.city?.message}
+              {...register('city')}
+            />
+          ) : (
+            <Select
+              label="Shahar"
+              options={cityOptions}
+              placeholder="Shaharni tanlang"
+              error={errors.city?.message}
+              {...register('city')}
+            />
+          )}
+        </div>
+
+        <Input
+          label="Telefon raqami"
+          placeholder="+998901234567"
+          inputMode="numeric"
+          error={errors.phone?.message}
+          {...register('phone')}
+          onChange={(e) => setValue('phone', maskPhoneUZ(e.target.value), { shouldValidate: true, shouldDirty: true })}
+        />
+
+        <div className="rounded-2xl border border-slate-200 p-6 dark:border-slate-800">
+          <Controller
+            control={control}
+            name="ownerIsApplicant"
+            render={({ field }) => (
+              <ToggleSwitch
+                label="Transport egasi"
+                value={field.value ? 'ha' : 'yoq'}
+                onChange={(val) => field.onChange(val === 'ha')}
+                options={[
+                  { value: 'ha', label: 'Men egasiman' },
+                  { value: 'yoq', label: 'Boshqa shaxs' },
+                ]}
+              />
+            )}
+          />
+
+          {!ownerIsApplicant && (
+            <div className="mt-5 flex flex-col gap-5">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Transport egasining pasport ma&apos;lumotlarini kiriting — sug&apos;urta kompaniyasi rasmiy polis uchun talab qiladi.
+              </p>
+              <div className="grid grid-cols-2 gap-5">
+                <Input
+                  label="Egasining pasport seriyasi"
+                  placeholder="AB"
+                  error={errors.ownerPassportSeries?.message}
+                  {...register('ownerPassportSeries')}
+                />
+                <Input
+                  label="Egasining pasport raqami"
+                  placeholder="1234567"
+                  error={errors.ownerPassportNumber?.message}
+                  {...register('ownerPassportNumber')}
+                />
+              </div>
+              <Input
+                label="Egasining tug'ilgan sanasi"
+                type="date"
+                max={new Date().toISOString().split('T')[0]}
+                error={errors.ownerBirthDate?.message}
+                {...register('ownerBirthDate')}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-between">
+          <Button type="button" variant="outline" onClick={() => router.push('/resident-type')}>
+            Orqaga
+          </Button>
+          <Button type="submit" variant="primary" isLoading={isSubmitting} disabled={!isValid} className="px-10">
+            Keyingisi
+          </Button>
+        </div>
+      </form>
+    </WizardShell>
+  );
+}
+
+export default function VehicleInfoPage() {
+  return (
+    <AuthGuard>
+      <VehicleInfoContent />
+    </AuthGuard>
+  );
+}

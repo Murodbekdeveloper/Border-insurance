@@ -1,0 +1,88 @@
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { User } from '../../users/entities/user.entity';
+
+export enum WeightCategory {
+  LIGHT = 'yengil',
+  HEAVY = "og'ir",
+}
+
+export enum RegistrationCountry {
+  UZ = 'UZ',
+  FOREIGN = 'Xorij',
+}
+
+@Entity('vehicles')
+export class Vehicle {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @ManyToOne(() => User, (user) => user.vehicles, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userId' })
+  user: User;
+
+  @Column()
+  userId: string;
+
+  @Column({ type: 'enum', enum: WeightCategory })
+  weightCategory: WeightCategory;
+
+  @Column({ type: 'enum', enum: RegistrationCountry })
+  registrationCountry: RegistrationCountry;
+
+  @Column({ unique: true })
+  plateNumber: string;
+
+  @Column()
+  techPassportSeries: string;
+
+  @Column()
+  techPassportNumber: string;
+
+  @Column()
+  model: string;
+
+  @Column()
+  vehicleType: string;
+
+  @Column({ type: 'date' })
+  techPassportIssueDate: string;
+
+  @Column()
+  manufactureYear: number;
+
+  @Column({ unique: true })
+  bodyNumber: string;
+
+  @Column({ unique: true })
+  engineNumber: string;
+
+  @Column()
+  city: string;
+
+  @Column()
+  phone: string;
+
+  // Asia Insurance's /save-policy contract needs a vehicle `owner`
+  // (person or organization) separate from the `applicant` — usually the
+  // same person as the logged-in user, hence the default. When false, the
+  // three fields below hold the actual owner's own passport+birth date;
+  // when true they stay null and the owner is derived from the user's own
+  // profile fields (User.passportSeries/passportNumber/birthDate) instead.
+  @Column({ default: true })
+  ownerIsApplicant: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  ownerPassportSeries: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  ownerPassportNumber: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  ownerBirthDate: string | null;
+}

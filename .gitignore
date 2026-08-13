@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+
+# env files — real secrets live only in these, never commit them
+.env
+.env.local
+.env.*.local
+backend/.env
+backend/.env.test
+frontend/.env.local
+
+# build output
+backend/dist/
+frontend/.next/
+frontend/out/
+
+# local postgres data
+backend/.pgdata/
+
+# test/coverage
+coverage/
+
+# misc
+.DS_Store
+*.log
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+.vercel
+
+# mobile app has its own separate git repo — not part of this web deploy
+mobile/
