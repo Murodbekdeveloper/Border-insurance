@@ -1,0 +1,170 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Deploy: Render dashboard → New → Blueprint → point at this repo. Render
+# reads this file and provisions all three resources below in one go.
+#
+# Before/after first deploy, a few things need a human:
+#   1. Region/plan below are placeholders (`frankfurt` / `starter`) — pick
+#      what's actually available/affordable on your Render account.
+#   2. Any envVar below marked `sync: false` has no value here on purpose —
+#      Render will prompt for it in the dashboard (real secrets never belong
+#      in a file committed to git).
+#   3. FRONTEND_URL / NEXT_PUBLIC_API_URL / GOOGLE_CALLBACK_URL below are
+#      already set to borderinsurance.uz / api.borderinsurance.uz, and the
+#      `domains:` block on each service registers those with Render. They
+#      won't actually resolve until DNS points at Render — after this
+#      Blueprint applies, open each service → Settings → Custom Domains,
+#      Render shows the exact record to add at your registrar (usually an
+#      A/ALIAS record for the apex `borderinsurance.uz` and a CNAME for
+#      `www` / `api`). Render issues the SSL cert automatically once DNS
+#      verifies. Until then, use each service's *.onrender.com URL to test.
+#   4. NEXT_PUBLIC_API_URL is consumed at Docker *build* time (Next.js
+#      inlines NEXT_PUBLIC_* into the client bundle) — Render passes
+#      envVars through as Docker build args automatically, but double-check
+#      the build log shows the right value baked in.
+
+databases:
+  - name: osago-db
+    databaseName: osago
+    user: osago
+    plan: starter
+    region: frankfurt
+
+services:
+  - type: web
+    name: osago-backend
+    runtime: docker
+    repo: https://github.com/Murodbekdeveloper/Border-insurance
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /health
+    domains:
+      - api.borderinsurance.uz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+
+      # Internal connection to the database above — no TLS needed between
+      # two Render services in the same region, so DB_SSL stays false.
+      # Flip to true only if DB_HOST ever points at the database's
+      # *external* hostname instead.
+      - key: DB_HOST
+        fromDatabase:
+          name: osago-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: osago-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: osago-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: osago-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: osago-db
+          property: database
+      - key: DB_SSL
+        value: 'false'
+
+      # Render generates and stores a real random value for each of these
+      # once at first deploy — never the `dev_*` fallback configuration.ts
+      # uses locally, so main.ts's production boot guard passes.
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ADMIN_JWT_ACCESS_SECRET
+        generateValue: true
+      - key: ADMIN_JWT_REFRESH_SECRET
+        generateValue: true
+      - key: INSURANCE_PARTNER_INBOUND_TOKEN
+        generateValue: true
+      - key: INSURANCE_PARTNER_CALLBACK_TOKEN
+        generateValue: true
+
+      - key: FRONTEND_URL
+        value: https://borderinsurance.uz
+
+      # OAuth / Sign in with Apple
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        value: https://api.borderinsurance.uz/auth/google/callback
+      - key: GOOGLE_IOS_CLIENT_ID
+        sync: false
+      - key: APPLE_BUNDLE_ID
+        value: com.border.app
+
+      # Payment gateway — out of scope for this pass, stays on the mock
+      # provider until real Payme merchant credentials are supplied.
+      - key: PAYMENT_GATEWAY_PROVIDER
+        value: mock
+      - key: PAYME_MERCHANT_ID
+        sync: false
+      - key: PAYME_KEY
+        sync: false
+
+      # Email / SMS — falls back to logging instead of sending until set.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: '587'
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        value: 'OSAGO Online <no-reply@osago.local>'
+      - key: ESKIZ_EMAIL
+        sync: false
+      - key: ESKIZ_PASSWORD
+        sync: false
+
+      # OCR — stays disabled (manual-entry only) until set.
+      - key: GOOGLE_VISION_API_KEY
+        sync: false
+
+      # Asia Insurance (real OSAGO issuer) — outbound calls fail until set.
+      - key: INSURANCE_PARTNER_API_URL
+        value: https://ais.asia-insurance.uz
+      - key: INSURANCE_PARTNER_LOGIN
+        sync: false
+      - key: INSURANCE_PARTNER_PASSWORD
+        sync: false
+
+      # Error monitoring — no-op until a DSN is set.
+      - key: SENTRY_DSN
+        sync: false
+
+  - type: web
+    name: osago-frontend
+    runtime: docker
+    repo: https://github.com/Murodbekdeveloper/Border-insurance
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: starter
+    region: frankfurt
+    domains:
+      - borderinsurance.uz
+      - www.borderinsurance.uz
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://api.borderinsurance.uz
+      # Client-side error monitoring — also read at Docker build time (4).
+      - key: NEXT_PUBLIC_SENTRY_DSN
+        sync: false
+      # Server-side (SSR/route handler) error monitoring — read at runtime,
+      # can differ from NEXT_PUBLIC_SENTRY_DSN above but usually the same DSN.
+      - key: SENTRY_DSN
+        sync: false

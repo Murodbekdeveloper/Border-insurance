@@ -62,6 +62,7 @@ describe('vehicleSchema', () => {
     engineNumber: 'ENG1234567',
     city: 'Toshkent shahri',
     phone: '+998901234567',
+    ownerIsApplicant: true,
   };
 
   it('accepts a fully valid vehicle', () => {

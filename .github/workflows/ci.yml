@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: osago_admin
+          POSTGRES_DB: osago_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5544:5432
+        options: >-
+          --health-cmd "pg_isready -U osago_admin"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run build
+
+      - name: Unit tests
+        run: npm test -- --ci
+
+      - name: Run migrations against test DB
+        run: npm run migration:run
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5544
+          DB_USERNAME: osago_admin
+          DB_PASSWORD: ''
+          DB_NAME: osago_test
+
+      - name: E2E tests
+        # Reads backend/.env.test itself (see test/setup-env.ts) — same
+        # DB_HOST/PORT/USERNAME/NAME as the migration step above.
+        run: npm run test:e2e
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm test
+
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000

@@ -3,7 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 import configuration from './config/configuration';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -21,6 +22,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
@@ -38,6 +40,9 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
         username: configService.get<string>('database.username'),
         password: configService.get<string>('database.password'),
         database: configService.get<string>('database.name'),
+        ssl: configService.get<boolean>('database.ssl')
+          ? { rejectUnauthorized: false }
+          : false,
         autoLoadEntities: true,
         // Schema is managed exclusively through migrations (see src/migrations
         // and the migration:* npm scripts) — run `npm run migration:run`
@@ -58,7 +63,14 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     InsurancePartnerModule,
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    AppService,
+    // Registered before other filters/guards on purpose — reports any
+    // otherwise-unhandled exception to Sentry (no-op when SENTRY_DSN is
+    // unset, see instrument.ts).
+    { provide: APP_FILTER, useClass: SentryGlobalFilter },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

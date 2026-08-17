@@ -8,6 +8,15 @@ export default () => ({
     username: process.env.DB_USERNAME ?? 'postgres',
     password: process.env.DB_PASSWORD ?? '',
     name: process.env.DB_NAME ?? 'osago',
+    // Render's external Postgres endpoint (and most managed providers)
+    // terminates TLS with a cert not in Node's default CA bundle — same
+    // trust model as the partner API, hence rejectUnauthorized: false
+    // rather than skipping TLS. Internal same-region connections don't
+    // need this; leave DB_SSL unset for local/docker-compose Postgres.
+    ssl: process.env.DB_SSL === 'true',
+  },
+  sentry: {
+    dsn: process.env.SENTRY_DSN ?? '',
   },
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET ?? 'dev_access_secret',
