@@ -10,6 +10,22 @@ function makeFile(overrides: Partial<Express.Multer.File> = {}): Express.Multer.
   } as Express.Multer.File;
 }
 
+// Shapes a fake Interactions API response the way the real REST endpoint
+// does: the answer lives in the last model_output step, not a top-level
+// "output_text" field (that's an SDK-only convenience, absent from raw
+// REST responses).
+function modelOutputResponse(fields: Record<string, unknown>) {
+  return {
+    steps: [
+      { type: 'thought' },
+      {
+        type: 'model_output',
+        content: [{ type: 'text', text: JSON.stringify(fields) }],
+      },
+    ],
+  };
+}
+
 describe('DocumentsService', () => {
   const originalFetch = global.fetch;
 
@@ -38,14 +54,13 @@ describe('DocumentsService', () => {
 
   it('calls the Gemini Interactions API and returns parsed fields', async () => {
     const fetchMock = jest.fn().mockResolvedValue({
-      json: async () => ({
-        output_text: JSON.stringify({
+      json: async () =>
+        modelOutputResponse({
           plateNumber: '01 A 123 AA',
           techPassportSeries: 'AAB',
           techPassportNumber: '1234567',
           techPassportIssueDate: '2022-05-10',
         }),
-      }),
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
@@ -69,14 +84,13 @@ describe('DocumentsService', () => {
 
   it('drops empty-string fields the model could not read confidently', async () => {
     global.fetch = jest.fn().mockResolvedValue({
-      json: async () => ({
-        output_text: JSON.stringify({
+      json: async () =>
+        modelOutputResponse({
           passportSeries: 'AB',
           passportNumber: '',
           licenseNumber: '',
           licenseIssueDate: '2020-01-15',
         }),
-      }),
     }) as unknown as typeof fetch;
 
     const service = makeService('test-key');

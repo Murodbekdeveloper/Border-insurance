@@ -13,7 +13,10 @@ const GEMINI_MODEL = 'gemini-flash-latest';
 const GEMINI_API_REVISION = '2026-05-20';
 
 interface InteractionsResponse {
-  output_text?: string;
+  steps?: {
+    type: string;
+    content?: { type: string; text?: string }[];
+  }[];
   errors?: { message: string }[];
 }
 
@@ -105,7 +108,19 @@ export class DocumentsService {
       this.logger.warn(`Gemini Interactions API error: ${message}`);
       throw new Error(message);
     }
-    return body.output_text ?? '{}';
+    return this.extractOutputText(body);
+  }
+
+  // The REST response has no top-level "output_text" convenience field (that's
+  // an SDK-only addition) — the model's answer lives in the last
+  // model_output step's text content.
+  private extractOutputText(body: InteractionsResponse): string {
+    const modelOutputs = (body.steps ?? []).filter(
+      (step) => step.type === 'model_output',
+    );
+    const last = modelOutputs[modelOutputs.length - 1];
+    const text = last?.content?.find((c) => c.type === 'text')?.text;
+    return text ?? '{}';
   }
 
   private parseFields(outputText: string): ExtractedFields {
