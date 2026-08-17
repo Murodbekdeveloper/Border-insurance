@@ -1,33 +1,29 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
 #
-# Deploy: Render dashboard → New → Blueprint → point at this repo. Render
-# reads this file and provisions all three resources below in one go.
+# Backend + Postgres run on Render; the frontend runs on Vercel (see
+# vercel.json / the Vercel project "border-insurance-frontend") — Vercel's
+# native Next.js build pipeline doesn't work with a Dockerfile/standalone
+# output, so it isn't part of this Blueprint.
 #
-# Before/after first deploy, a few things need a human:
-#   1. Region/plan below are placeholders (`frankfurt` / `starter`) — pick
-#      what's actually available/affordable on your Render account.
+# This file documents the actual deployed configuration (created directly
+# via the Render API rather than by applying this Blueprint through the
+# dashboard). If you ever re-apply it as a Blueprint, note:
+#   1. Region/plan reflect what's actually running: `basic_1gb` Postgres
+#      ($19/mo), `standard` backend web service ($25/mo), region frankfurt.
 #   2. Any envVar below marked `sync: false` has no value here on purpose —
 #      Render will prompt for it in the dashboard (real secrets never belong
 #      in a file committed to git).
-#   3. FRONTEND_URL / NEXT_PUBLIC_API_URL / GOOGLE_CALLBACK_URL below are
-#      already set to borderinsurance.uz / api.borderinsurance.uz, and the
-#      `domains:` block on each service registers those with Render. They
-#      won't actually resolve until DNS points at Render — after this
-#      Blueprint applies, open each service → Settings → Custom Domains,
-#      Render shows the exact record to add at your registrar (usually an
-#      A/ALIAS record for the apex `borderinsurance.uz` and a CNAME for
-#      `www` / `api`). Render issues the SSL cert automatically once DNS
-#      verifies. Until then, use each service's *.onrender.com URL to test.
-#   4. NEXT_PUBLIC_API_URL is consumed at Docker *build* time (Next.js
-#      inlines NEXT_PUBLIC_* into the client bundle) — Render passes
-#      envVars through as Docker build args automatically, but double-check
-#      the build log shows the right value baked in.
+#   3. FRONTEND_URL / GOOGLE_CALLBACK_URL point at the production domains
+#      (borderinsurance.uz on Vercel, api.borderinsurance.uz on Render).
+#      DNS for api.borderinsurance.uz is a CNAME to osago-backend.onrender.com,
+#      managed in Cloudflare (DNS only, not proxied, so Render can issue the
+#      SSL cert).
 
 databases:
   - name: osago-db
     databaseName: osago
     user: osago
-    plan: starter
+    plan: basic_1gb
     region: frankfurt
 
 services:
@@ -37,7 +33,7 @@ services:
     repo: https://github.com/Murodbekdeveloper/Border-insurance
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    plan: starter
+    plan: standard
     region: frankfurt
     healthCheckPath: /health
     domains:
@@ -144,27 +140,5 @@ services:
         sync: false
 
       # Error monitoring — no-op until a DSN is set.
-      - key: SENTRY_DSN
-        sync: false
-
-  - type: web
-    name: osago-frontend
-    runtime: docker
-    repo: https://github.com/Murodbekdeveloper/Border-insurance
-    dockerfilePath: ./frontend/Dockerfile
-    dockerContext: ./frontend
-    plan: starter
-    region: frankfurt
-    domains:
-      - borderinsurance.uz
-      - www.borderinsurance.uz
-    envVars:
-      - key: NEXT_PUBLIC_API_URL
-        value: https://api.borderinsurance.uz
-      # Client-side error monitoring — also read at Docker build time (4).
-      - key: NEXT_PUBLIC_SENTRY_DSN
-        sync: false
-      # Server-side (SSR/route handler) error monitoring — read at runtime,
-      # can differ from NEXT_PUBLIC_SENTRY_DSN above but usually the same DSN.
       - key: SENTRY_DSN
         sync: false
