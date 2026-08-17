@@ -5,24 +5,42 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentType } from './document-type';
-import { extractFields, ExtractedFields } from './extract-fields';
+import { ExtractedFields, FIELD_SCHEMAS } from './extract-fields';
 
 export const OCR_NOT_CONFIGURED_CODE = 'OCR_NOT_CONFIGURED';
 
-interface VisionAnnotateResponse {
-  responses?: {
-    fullTextAnnotation?: { text: string };
-    error?: { message: string };
-  }[];
+const GEMINI_MODEL = 'gemini-flash-latest';
+const GEMINI_API_REVISION = '2026-05-20';
+
+interface InteractionsResponse {
+  output_text?: string;
+  errors?: { message: string }[];
 }
 
+const PROMPT: Record<DocumentType, string> = {
+  vehicle_tech_passport:
+    "Bu rasmda O'zbekiston transport vositasi texnik pasporti bor. Rasmdan davlat " +
+    "raqami, texpasport seriyasi, texpasport raqami va texpasport berilgan sanani " +
+    "o'qib, so'ralgan JSON sxemasi bo'yicha qaytaring.",
+  driver_license:
+    "Bu rasmda O'zbekiston fuqarosi pasporti yoki haydovchilik guvohnomasi bor. " +
+    "Rasmdan pasport seriyasi, pasport raqami, guvohnoma raqami va guvohnoma " +
+    "berilgan sanani o'qib, so'ralgan JSON sxemasi bo'yicha qaytaring.",
+};
+
+const COMMON_INSTRUCTION =
+  ' Har bir maydonni faqat aniq va ishonchli o\'qiy olsangiz to\'ldiring — ' +
+  'aks holda bo\'sh satr ("") qoldiring, taxmin qilmang. Sana maydonlarini ' +
+  'faqat YYYY-MM-DD (ISO 8601) formatida qaytaring.';
+
 /**
- * OCR via the Google Cloud Vision REST API (an API key, not a service
- * account — simplest to rotate/scope for a single "read text off a photo"
- * use case). Left unconfigured by default, the same pattern as
- * SmsService/EmailService/PaymePaymentGatewayService: throws a stable
- * OCR_NOT_CONFIGURED code the mobile app already knows how to render as
- * "fill this in manually" instead of a generic error.
+ * Structured extraction via the Gemini Interactions API (an AI Studio API
+ * key, not a service account — simplest to rotate/scope for a single
+ * "read fields off a document photo" use case). Left unconfigured by
+ * default, the same pattern as SmsService/EmailService/
+ * PaymePaymentGatewayService: throws a stable OCR_NOT_CONFIGURED code the
+ * mobile/web app already knows how to render as "fill this in manually"
+ * instead of a generic error.
  */
 @Injectable()
 export class DocumentsService {
@@ -31,7 +49,7 @@ export class DocumentsService {
   constructor(private readonly configService: ConfigService) {}
 
   private get apiKey(): string {
-    return this.configService.get<string>('vision.apiKey') ?? '';
+    return this.configService.get<string>('gemini.apiKey') ?? '';
   }
 
   async extract(
@@ -41,37 +59,70 @@ export class DocumentsService {
     if (!this.apiKey) {
       throw new ServiceUnavailableException({
         code: OCR_NOT_CONFIGURED_CODE,
-        message: 'Google Vision API hali ulanmagan',
+        message: "Hujjatni avtomatik o'qish xizmati hali ulanmagan",
       });
     }
 
-    const rawText = await this.detectText(file.buffer);
-    return { rawText, fields: extractFields(rawText, documentType) };
+    const outputText = await this.callGemini(file, documentType);
+    return { rawText: outputText, fields: this.parseFields(outputText) };
   }
 
-  private async detectText(buffer: Buffer): Promise<string> {
+  private async callGemini(
+    file: Express.Multer.File,
+    documentType: DocumentType,
+  ): Promise<string> {
     const res = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${this.apiKey}`,
+      'https://generativelanguage.googleapis.com/v1beta/interactions',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'x-goog-api-key': this.apiKey,
+          'Content-Type': 'application/json',
+          'Api-Revision': GEMINI_API_REVISION,
+        },
         body: JSON.stringify({
-          requests: [
+          model: GEMINI_MODEL,
+          input: [
+            { type: 'text', text: PROMPT[documentType] + COMMON_INSTRUCTION },
             {
-              image: { content: buffer.toString('base64') },
-              features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
+              type: 'image',
+              data: file.buffer.toString('base64'),
+              mime_type: file.mimetype,
             },
           ],
+          response_format: {
+            type: 'text',
+            mime_type: 'application/json',
+            schema: FIELD_SCHEMAS[documentType],
+          },
         }),
       },
     );
 
-    const body = (await res.json()) as VisionAnnotateResponse;
-    const first = body.responses?.[0];
-    if (first?.error) {
-      this.logger.warn(`Vision API error: ${first.error.message}`);
-      throw new Error(first.error.message);
+    const body = (await res.json()) as InteractionsResponse;
+    if (body.errors?.length) {
+      const message = body.errors.map((e) => e.message).join('; ');
+      this.logger.warn(`Gemini Interactions API error: ${message}`);
+      throw new Error(message);
     }
-    return first?.fullTextAnnotation?.text ?? '';
+    return body.output_text ?? '{}';
+  }
+
+  private parseFields(outputText: string): ExtractedFields {
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(outputText) as Record<string, unknown>;
+    } catch {
+      this.logger.warn(`Gemini returned non-JSON output: ${outputText}`);
+      return {};
+    }
+
+    const fields: ExtractedFields = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === 'string' && value.trim() !== '') {
+        fields[key] = value;
+      }
+    }
+    return fields;
   }
 }

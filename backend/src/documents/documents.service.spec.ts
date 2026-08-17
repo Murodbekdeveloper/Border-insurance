@@ -1,0 +1,101 @@
+import { ConfigService } from '@nestjs/config';
+import { ServiceUnavailableException } from '@nestjs/common';
+import { DocumentsService, OCR_NOT_CONFIGURED_CODE } from './documents.service';
+
+function makeFile(overrides: Partial<Express.Multer.File> = {}): Express.Multer.File {
+  return {
+    buffer: Buffer.from('fake-image-bytes'),
+    mimetype: 'image/jpeg',
+    ...overrides,
+  } as Express.Multer.File;
+}
+
+describe('DocumentsService', () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.restoreAllMocks();
+  });
+
+  function makeService(apiKey: string): DocumentsService {
+    const configService = {
+      get: (key: string) => (key === 'gemini.apiKey' ? apiKey : undefined),
+    } as unknown as ConfigService;
+    return new DocumentsService(configService);
+  }
+
+  it('throws OCR_NOT_CONFIGURED when no API key is set', async () => {
+    const service = makeService('');
+
+    await expect(service.extract(makeFile(), 'vehicle_tech_passport')).rejects.toMatchObject({
+      response: { code: OCR_NOT_CONFIGURED_CODE },
+    });
+    await expect(
+      service.extract(makeFile(), 'vehicle_tech_passport'),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
+  it('calls the Gemini Interactions API and returns parsed fields', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      json: async () => ({
+        output_text: JSON.stringify({
+          plateNumber: '01 A 123 AA',
+          techPassportSeries: 'AAB',
+          techPassportNumber: '1234567',
+          techPassportIssueDate: '2022-05-10',
+        }),
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const service = makeService('test-key');
+    const result = await service.extract(makeFile(), 'vehicle_tech_passport');
+
+    expect(result.fields).toEqual({
+      plateNumber: '01 A 123 AA',
+      techPassportSeries: 'AAB',
+      techPassportNumber: '1234567',
+      techPassportIssueDate: '2022-05-10',
+    });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://generativelanguage.googleapis.com/v1beta/interactions');
+    expect(init.headers['x-goog-api-key']).toBe('test-key');
+    const body = JSON.parse(init.body as string);
+    expect(body.model).toBe('gemini-flash-latest');
+    expect(body.response_format.mime_type).toBe('application/json');
+  });
+
+  it('drops empty-string fields the model could not read confidently', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      json: async () => ({
+        output_text: JSON.stringify({
+          passportSeries: 'AB',
+          passportNumber: '',
+          licenseNumber: '',
+          licenseIssueDate: '2020-01-15',
+        }),
+      }),
+    }) as unknown as typeof fetch;
+
+    const service = makeService('test-key');
+    const result = await service.extract(makeFile(), 'driver_license');
+
+    expect(result.fields).toEqual({
+      passportSeries: 'AB',
+      licenseIssueDate: '2020-01-15',
+    });
+  });
+
+  it('throws when Gemini returns an error', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      json: async () => ({ errors: [{ message: 'quota exceeded' }] }),
+    }) as unknown as typeof fetch;
+
+    const service = makeService('test-key');
+    await expect(service.extract(makeFile(), 'driver_license')).rejects.toThrow(
+      'quota exceeded',
+    );
+  });
+});

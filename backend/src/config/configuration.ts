@@ -98,13 +98,14 @@ export default () => ({
     callbackToken:
       process.env.INSURANCE_PARTNER_CALLBACK_TOKEN ?? 'dev_callback_token',
   },
-  vision: {
-    // Google Cloud Vision REST API key (not a service account) used to OCR
-    // tech-passport/driving-license photos uploaded from the mobile app.
-    // Left empty by default — DocumentsService then throws OCR_NOT_CONFIGURED
-    // instead of guessing at fields, the same pattern as the other
-    // integrations below.
-    apiKey: process.env.GOOGLE_VISION_API_KEY ?? '',
+  gemini: {
+    // Google AI Studio API key — Gemini reads tech-passport/driving-license
+    // photos uploaded from the web/mobile app and returns the relevant
+    // fields directly as structured JSON (Interactions API, response_format
+    // schema), no separate OCR+regex pass needed. Left empty by default —
+    // DocumentsService then throws OCR_NOT_CONFIGURED instead of guessing
+    // at fields, the same pattern as the other integrations below.
+    apiKey: process.env.GEMINI_API_KEY ?? '',
   },
   sms: {
     // Eskiz.uz — the SMS gateway most Uzbek fintech/insurance apps use.

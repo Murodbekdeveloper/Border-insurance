@@ -127,8 +127,9 @@ services:
       - key: ESKIZ_PASSWORD
         sync: false
 
-      # OCR — stays disabled (manual-entry only) until set.
-      - key: GOOGLE_VISION_API_KEY
+      # Document OCR/extraction (Gemini) — stays disabled (manual-entry
+      # only) until set.
+      - key: GEMINI_API_KEY
         sync: false
 
       # Asia Insurance (real OSAGO issuer) — outbound calls fail until set.
