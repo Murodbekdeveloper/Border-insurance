@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,7 +8,7 @@ import { VehicleFormData, vehicleSchema } from '@/lib/validation/schemas';
 import { CITIES, VEHICLE_TYPES } from '@/lib/constants';
 import { getVehicleDefaultsForModel, getWeightCategoryForVehicleType } from '@/lib/carModels';
 import { maskAlnumUpper, maskDigits, maskPhoneUZ, maskPlateNumber, maskYear } from '@/lib/masks';
-import { createVehicle } from '@/lib/api/vehicles';
+import { createVehicle, lookupVehicle } from '@/lib/api/vehicles';
 import { extractVehicleDocument, OcrNotConfiguredError } from '@/lib/api/ocr';
 import { useAuthStore } from '@/store/authStore';
 import { useApplicationStore } from '@/store/applicationStore';
@@ -51,6 +52,53 @@ function VehicleInfoContent() {
   });
 
   const ownerIsApplicant = watch('ownerIsApplicant');
+
+  // Rezident foydalanuvchi uchun: davlat raqami + texpasport seriyasi/raqami
+  // to'liq kiritilgach, qolgan transport ma'lumotlarini (model, yili, kuzov/
+  // dvigatel raqami) Asia Insurance'dan avtomatik tortib olamiz — norezident
+  // (chet el) transport vositalari ularning bazasida bo'lmaydi, shuning
+  // uchun faqat residentlar uchun ishlaydi.
+  const plateNumberValue = watch('plateNumber');
+  const techPassportSeriesValue = watch('techPassportSeries');
+  const techPassportNumberValue = watch('techPassportNumber');
+  const [isLookingUpVehicle, setIsLookingUpVehicle] = useState(false);
+  const lookedUpKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isForeign) return;
+    if (!plateNumberValue || plateNumberValue.length < 5) return;
+    if (!techPassportSeriesValue || techPassportSeriesValue.length < 2) return;
+    if (!techPassportNumberValue || techPassportNumberValue.length < 4) return;
+
+    const key = `${plateNumberValue}|${techPassportSeriesValue}|${techPassportNumberValue}`;
+    if (lookedUpKeyRef.current === key) return;
+
+    const timer = setTimeout(() => {
+      void (async () => {
+        setIsLookingUpVehicle(true);
+        try {
+          const result = await lookupVehicle(plateNumberValue, techPassportSeriesValue, techPassportNumberValue);
+          lookedUpKeyRef.current = key;
+          if (result) {
+            setValue('model', result.model, { shouldValidate: true, shouldDirty: true });
+            setValue('manufactureYear', String(result.manufactureYear), { shouldValidate: true, shouldDirty: true });
+            setValue('bodyNumber', result.bodyNumber, { shouldValidate: true, shouldDirty: true });
+            setValue('engineNumber', result.engineNumber, { shouldValidate: true, shouldDirty: true });
+            const defaults = getVehicleDefaultsForModel(result.model);
+            setValue('vehicleType', defaults.vehicleType, { shouldValidate: true, shouldDirty: true });
+            setValue('weightCategory', defaults.weightCategory, { shouldValidate: true, shouldDirty: true });
+            toast.success('Transport ma\'lumotlari avtomatik topildi va to\'ldirildi. Iltimos, tekshirib chiqing.');
+          }
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Transport ma\'lumotlarini olishda xatolik yuz berdi');
+        } finally {
+          setIsLookingUpVehicle(false);
+        }
+      })();
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [isForeign, plateNumberValue, techPassportSeriesValue, techPassportNumberValue, setValue]);
 
   const onSubmit = async (data: VehicleFormData) => {
     if (!user) return;
@@ -165,6 +213,11 @@ function VehicleInfoContent() {
             onChange={(e) => setValue('techPassportNumber', maskDigits(e.target.value, 7), { shouldValidate: true, shouldDirty: true })}
           />
         </div>
+        {isLookingUpVehicle && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Transport ma&apos;lumotlari qidirilmoqda...
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-5">
           <Controller

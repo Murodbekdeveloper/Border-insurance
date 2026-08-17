@@ -10,6 +10,8 @@ import {
   GetRelativeResponse,
   SavePolicyRequest,
   SavePolicyResponse,
+  VehicleLookupRequest,
+  VehicleLookupResponse,
 } from './asia-insurance.types';
 
 /**
@@ -51,6 +53,14 @@ export class AsiaInsuranceClientService {
 
   getRelatives(): Promise<GetRelativeResponse> {
     return this.get<GetRelativeResponse>('/get-relative');
+  }
+
+  // Path unconfirmed — see the comment on VehicleLookupRequest.
+  lookupVehicle(request: VehicleLookupRequest): Promise<VehicleLookupResponse> {
+    return this.post<VehicleLookupRequest, VehicleLookupResponse>(
+      '/get-vehicle',
+      request,
+    );
   }
 
   private baseUrl(): string {

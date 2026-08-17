@@ -130,3 +130,28 @@ export interface RelativeItem {
 export interface GetRelativeResponse {
   items: RelativeItem[];
 }
+
+// Vehicle-by-plate-number lookup — field names follow the same convention
+// as CalcRequest/SavePolicyRequest above (gos_number/tech_sery/tech_number),
+// but unlike those, this shape is NOT confirmed against Asia Insurance's
+// published swagger (osago3.yaml only documents get-calc-osago, save-policy,
+// get-policy, get-period, get-relative). Verify the actual path and
+// response field names with Asia Insurance before relying on this in
+// production — adjust both this type and the `/get-vehicle` path in
+// AsiaInsuranceClientService.lookupVehicle() once confirmed.
+export interface VehicleLookupRequest {
+  gos_number: string;
+  tech_sery: string;
+  tech_number: string;
+}
+
+export interface VehicleLookupResponse {
+  result: boolean;
+  message: string;
+  response: {
+    model: string;
+    manufacture_year: number;
+    body_number: string;
+    engine_number: string;
+  };
+}
