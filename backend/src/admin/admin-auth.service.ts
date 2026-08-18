@@ -131,10 +131,7 @@ export class AdminAuthService {
     await this.adminsRepository.remove(admin);
   }
 
-  async updateProfile(
-    id: string,
-    dto: UpdateAdminProfileDto,
-  ): Promise<Admin> {
+  async updateProfile(id: string, dto: UpdateAdminProfileDto): Promise<Admin> {
     await this.adminsRepository.update({ id }, { fullName: dto.fullName });
     const admin = await this.findById(id);
     if (!admin) {
@@ -143,10 +140,7 @@ export class AdminAuthService {
     return admin;
   }
 
-  async changePassword(
-    id: string,
-    dto: ChangeAdminPasswordDto,
-  ): Promise<void> {
+  async changePassword(id: string, dto: ChangeAdminPasswordDto): Promise<void> {
     const admin = await this.adminsRepository
       .createQueryBuilder('admin')
       .addSelect('admin.passwordHash')

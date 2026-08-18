@@ -30,7 +30,9 @@ export class PaymentCallbackDto {
   @IsString()
   policy_status: string;
 
-  @ApiProperty({ example: 'https://ersp.e-osgo.uz/ru/site/export-to-pdf?id=...' })
+  @ApiProperty({
+    example: 'https://ersp.e-osgo.uz/ru/site/export-to-pdf?id=...',
+  })
   @IsString()
   policy_check: string;
 }

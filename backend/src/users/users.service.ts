@@ -67,7 +67,10 @@ export class UsersService {
   findByEmailWithVerificationCode(email: string): Promise<User | null> {
     return this.usersRepository
       .createQueryBuilder('user')
-      .addSelect(['user.emailVerificationCode', 'user.emailVerificationCodeExpiresAt'])
+      .addSelect([
+        'user.emailVerificationCode',
+        'user.emailVerificationCodeExpiresAt',
+      ])
       .where('user.email = :email', { email })
       .getOne();
   }
@@ -75,7 +78,11 @@ export class UsersService {
   async markEmailVerified(id: string): Promise<User> {
     await this.usersRepository.update(
       { id },
-      { isEmailVerified: true, emailVerificationCode: null, emailVerificationCodeExpiresAt: null },
+      {
+        isEmailVerified: true,
+        emailVerificationCode: null,
+        emailVerificationCodeExpiresAt: null,
+      },
     );
     const user = await this.findById(id);
     if (!user) {
@@ -91,7 +98,10 @@ export class UsersService {
   ): Promise<void> {
     await this.usersRepository.update(
       { id },
-      { emailVerificationCode: code, emailVerificationCodeExpiresAt: expiresAt },
+      {
+        emailVerificationCode: code,
+        emailVerificationCodeExpiresAt: expiresAt,
+      },
     );
   }
 

@@ -35,9 +35,9 @@ export class GoogleAuthGuard extends AuthGuard('google') {
   // bound to an httpOnly cookie set on THIS SAME browser when the flow was
   // initiated. The callback is only trusted if both match.
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest<
-      Request & { __oauthNonce?: string }
-    >();
+    const req = context
+      .switchToHttp()
+      .getRequest<Request & { __oauthNonce?: string }>();
     const res = context.switchToHttp().getResponse<Response>();
     const incomingState = req.query.state as string | undefined;
 
@@ -53,8 +53,7 @@ export class GoogleAuthGuard extends AuthGuard('google') {
     } else {
       const decoded = this.decodeState(incomingState);
       const cookieNonce = req.cookies?.[OAUTH_NONCE_COOKIE] as
-        | string
-        | undefined;
+        string | undefined;
       res.clearCookie(OAUTH_NONCE_COOKIE);
       if (!decoded || !cookieNonce || decoded.nonce !== cookieNonce) {
         throw new UnauthorizedException(
@@ -77,9 +76,9 @@ export class GoogleAuthGuard extends AuthGuard('google') {
   // machine — it must also be added to the OAuth client's "Authorized
   // redirect URIs" in Google Cloud Console for this to work.
   getAuthenticateOptions(context: ExecutionContext) {
-    const req = context.switchToHttp().getRequest<
-      Request & { __oauthNonce?: string }
-    >();
+    const req = context
+      .switchToHttp()
+      .getRequest<Request & { __oauthNonce?: string }>();
     const incomingState = req.query.state as string | undefined;
 
     // On the initial /auth/google request we know via ?client=mobile; on the

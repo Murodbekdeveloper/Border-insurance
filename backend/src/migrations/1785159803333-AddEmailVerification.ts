@@ -22,6 +22,8 @@ export class AddEmailVerification1785159803333 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "users" DROP COLUMN "emailVerificationCode"`,
     );
-    await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "isEmailVerified"`);
+    await queryRunner.query(
+      `ALTER TABLE "users" DROP COLUMN "isEmailVerified"`,
+    );
   }
 }

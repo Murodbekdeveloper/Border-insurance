@@ -1,4 +1,10 @@
-import { Controller, Get, NotFoundException, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InsurancePartnerService } from './insurance-partner.service';
@@ -14,7 +20,9 @@ import { PartnerApiKeyGuard } from './guards/partner-api-key.guard';
 @UseGuards(PartnerApiKeyGuard)
 @Controller('partner/transactions')
 export class PartnerTransactionsController {
-  constructor(private readonly insurancePartnerService: InsurancePartnerService) {}
+  constructor(
+    private readonly insurancePartnerService: InsurancePartnerService,
+  ) {}
 
   @Get(':transactionId')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })

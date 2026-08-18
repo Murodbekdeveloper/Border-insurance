@@ -41,7 +41,13 @@ describe('AsiaInsuranceClientService', () => {
       tech_number: '1036199',
       period_id: 1,
       limited: false,
-      owner: { person: { birth_date: '2000-01-01', pass_seria: 'AB', pass_number: '1234567' } },
+      owner: {
+        person: {
+          birth_date: '2000-01-01',
+          pass_seria: 'AB',
+          pass_number: '1234567',
+        },
+      },
       drivers: [],
     };
 
@@ -88,10 +94,24 @@ describe('AsiaInsuranceClientService', () => {
         phone_number: '998881234567',
         amount_uzs: 40000,
       },
-      techPassport: { govNumber: '01X123XX', tech_sery: 'AAF', tech_number: '1234567' },
+      techPassport: {
+        govNumber: '01X123XX',
+        tech_sery: 'AAF',
+        tech_number: '1234567',
+      },
       drivers: [],
-      owner: { person: { birth_date: '2000-01-01', pass_seria: 'AB', pass_number: '1234567' } },
-      applicant: { birth_date: '2000-01-01', pass_seria: 'AB', pass_number: '1234567' },
+      owner: {
+        person: {
+          birth_date: '2000-01-01',
+          pass_seria: 'AB',
+          pass_number: '1234567',
+        },
+      },
+      applicant: {
+        birth_date: '2000-01-01',
+        pass_seria: 'AB',
+        pass_number: '1234567',
+      },
     };
 
     const result = await service.savePolicy(request);
@@ -106,8 +126,7 @@ describe('AsiaInsuranceClientService', () => {
   it('GETs /get-period with just the auth header (no body)', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: () =>
-        Promise.resolve({ items: [{ period: 1, name: '1 yil' }] }),
+      json: () => Promise.resolve({ items: [{ period: 1, name: '1 yil' }] }),
     });
 
     const result = await service.getPeriods();
@@ -129,7 +148,9 @@ describe('AsiaInsuranceClientService', () => {
   it('throws before ever calling fetch when the login/password are not configured', async () => {
     const configService = {
       get: (key: string) =>
-        key === 'insurancePartner.apiUrl' ? 'https://ais.asia-insurance.uz' : '',
+        key === 'insurancePartner.apiUrl'
+          ? 'https://ais.asia-insurance.uz'
+          : '',
     } as unknown as ConfigService;
     service = new AsiaInsuranceClientService(configService);
 
@@ -158,7 +179,12 @@ describe('AsiaInsuranceClientService', () => {
     it('hits the sandbox host but never prefixes get-calc-osago with /sandbox', async () => {
       fetchMock.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ result: true, message: 'ok', response: { amount_uzs: 1 } }),
+        json: () =>
+          Promise.resolve({
+            result: true,
+            message: 'ok',
+            response: { amount_uzs: 1 },
+          }),
       });
       const sandboxService = makeSandboxService();
 
@@ -207,10 +233,18 @@ describe('AsiaInsuranceClientService', () => {
           phone_number: '998881234567',
           amount_uzs: 1,
         },
-        techPassport: { govNumber: '01A123AA', tech_sery: 'AAA', tech_number: '1234567' },
+        techPassport: {
+          govNumber: '01A123AA',
+          tech_sery: 'AAA',
+          tech_number: '1234567',
+        },
         drivers: [],
         owner: {},
-        applicant: { birth_date: '2000-01-01', pass_seria: 'AB', pass_number: '1234567' },
+        applicant: {
+          birth_date: '2000-01-01',
+          pass_seria: 'AB',
+          pass_number: '1234567',
+        },
       });
 
       const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -220,13 +254,18 @@ describe('AsiaInsuranceClientService', () => {
     });
 
     it('does not prefix /get-period or /get-relative — confirmed shared with production', async () => {
-      fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({ items: [] }) });
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ items: [] }),
+      });
       const sandboxService = makeSandboxService();
 
       await sandboxService.getPeriods();
       await sandboxService.getRelatives();
 
-      const urls = fetchMock.mock.calls.map((call) => call[0]);
+      const urls = fetchMock.mock.calls.map(
+        (call: unknown[]) => call[0] as string,
+      );
       expect(urls).toEqual([
         'https://online.asia-insurance.uz/apex/ins/osago_v3/get-period',
         'https://online.asia-insurance.uz/apex/ins/osago_v3/get-relative',

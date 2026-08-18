@@ -111,8 +111,7 @@ export class AuthService {
     if (!user.isEmailVerified) {
       throw new ForbiddenException({
         code: EMAIL_NOT_VERIFIED_CODE,
-        message:
-          'Email hali tasdiqlanmagan — tasdiqlash kodini kiriting',
+        message: 'Email hali tasdiqlanmagan — tasdiqlash kodini kiriting',
       });
     }
     return { user, ...this.issueTokens(user) };
@@ -127,7 +126,9 @@ export class AuthService {
       !user.emailVerificationCode ||
       !user.emailVerificationCodeExpiresAt
     ) {
-      throw new BadRequestException("Tasdiqlash kodi so'ralmagan yoki eskirgan");
+      throw new BadRequestException(
+        "Tasdiqlash kodi so'ralmagan yoki eskirgan",
+      );
     }
     if (user.emailVerificationCodeExpiresAt < new Date()) {
       throw new BadRequestException(
@@ -194,9 +195,7 @@ export class AuthService {
     const iosClientId = this.configService.get<string>('google.iosClientId');
     const ticket = await this.googleClient.verifyIdToken({
       idToken,
-      audience: [webClientId, iosClientId].filter(
-        (id): id is string => !!id,
-      ),
+      audience: [webClientId, iosClientId].filter((id): id is string => !!id),
     });
     const payload = ticket.getPayload();
     if (!payload?.sub || !payload.email) {

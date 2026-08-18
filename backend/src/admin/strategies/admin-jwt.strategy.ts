@@ -32,7 +32,9 @@ export class AdminJwtStrategy extends PassportStrategy(Strategy, 'admin-jwt') {
   async validate(payload: AdminJwtPayload) {
     const admin = await this.adminAuthService.findById(payload.sub);
     if (!admin || !admin.isActive) {
-      throw new UnauthorizedException('Administrator topilmadi yoki bloklangan');
+      throw new UnauthorizedException(
+        'Administrator topilmadi yoki bloklangan',
+      );
     }
     return { adminId: payload.sub, email: payload.email };
   }

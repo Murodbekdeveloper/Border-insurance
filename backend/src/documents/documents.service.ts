@@ -28,13 +28,13 @@ const PROMPT: Record<DocumentType, string> = {
     "texpasport raqami va texpasport berilgan sanani o'qib, so'ralgan JSON " +
     "sxemasi bo'yicha qaytaring.",
   driver_license:
-    "Bu rasm(lar)da ISTALGAN DAVLATNING fuqaro pasporti/ID-kartasi YOKI " +
+    'Bu rasm(lar)da ISTALGAN DAVLATNING fuqaro pasporti/ID-kartasi YOKI ' +
     "haydovchilik guvohnomasi bor — O'zbekiston fuqarosiniki bo'lishi shart " +
     "emas, xorijiy davlat hujjati ham bo'lishi mumkin (qaysi biri va qaysi " +
     "davlatniki ekanini rasmning o'zidan aniqlang). Har bir davlat/hujjat " +
     "turi o'zining formatida bo'ladi — O'zbekistonning eski pasporti " +
-    "(2 harf + 7 raqamli seriya), yangi ID-karta (alohida seriyasiz, " +
-    "faqat raqam), yoki xorijiy pasport (har xil uzunlik/format) — " +
+    '(2 harf + 7 raqamli seriya), yangi ID-karta (alohida seriyasiz, ' +
+    'faqat raqam), yoki xorijiy pasport (har xil uzunlik/format) — ' +
     "hujjatda aynan qanday yozilgan bo'lsa, formatni cheklamasdan/taxmin " +
     "qilmasdan o'sha ko'rinishda o'qing. Old va orqa tomonining ikkalasi " +
     "ham berilgan bo'lishi mumkin, ikkalasini ham diqqat bilan ko'rib " +
@@ -48,7 +48,7 @@ const PROMPT: Record<DocumentType, string> = {
 };
 
 const COMMON_INSTRUCTION =
-  ' Har bir maydonni faqat aniq va ishonchli o\'qiy olsangiz to\'ldiring — ' +
+  " Har bir maydonni faqat aniq va ishonchli o'qiy olsangiz to'ldiring — " +
   'aks holda bo\'sh satr ("") qoldiring, taxmin qilmang. Sana maydonlarini ' +
   'faqat YYYY-MM-DD (ISO 8601) formatida qaytaring.';
 

@@ -18,8 +18,7 @@ export const FIELD_SCHEMAS: Record<DocumentType, object> = {
       },
       techPassportSeries: {
         type: 'string',
-        description:
-          "Texpasport seriyasi — 2-3 ta lotin harf, masalan 'AAB'",
+        description: "Texpasport seriyasi — 2-3 ta lotin harf, masalan 'AAB'",
       },
       techPassportNumber: {
         type: 'string',
@@ -62,7 +61,7 @@ export const FIELD_SCHEMAS: Record<DocumentType, object> = {
       passportNumber: {
         type: 'string',
         description:
-          "Hujjatning identifikatsiya raqami — millati/hujjat turidan " +
+          'Hujjatning identifikatsiya raqami — millati/hujjat turidan ' +
           "qat'iy nazar, hujjatda aynan qanday yozilgan bo'lsa, harflar " +
           "va raqamlar bilan birga, o'sha ko'rinishda o'qing (uzunlik va " +
           "formatni cheklamang — O'zbekiston, xorijiy pasport, ID-karta, " +
@@ -71,7 +70,7 @@ export const FIELD_SCHEMAS: Record<DocumentType, object> = {
       licenseNumber: {
         type: 'string',
         description:
-          "Haydovchilik guvohnomasi raqami — istalgan davlat formatida, " +
+          'Haydovchilik guvohnomasi raqami — istalgan davlat formatida, ' +
           "hujjatda yozilganidek aynan o'qing (uzunlik/formatni cheklamang).",
       },
       licenseIssueDate: {

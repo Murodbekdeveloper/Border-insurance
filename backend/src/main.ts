@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import type { Express } from 'express';
 import { AppModule } from './app.module';
 
 // Secrets that must never reach a production deployment unset — each maps
@@ -44,7 +45,7 @@ async function bootstrap() {
 
   // Needed for the Throttler/rate-limiter to key off the real client IP
   // instead of a reverse proxy's, when deployed behind one.
-  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  (app.getHttpAdapter().getInstance() as Express).set('trust proxy', 1);
 
   app.use(helmet());
   // Needed to read the Google OAuth CSRF nonce cookie (see GoogleAuthGuard).

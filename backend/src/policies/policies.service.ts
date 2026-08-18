@@ -30,13 +30,13 @@ function generatePolicyNumber(): string {
 // used to retry with a freshly generated number rather than failing the
 // whole payment when two numbers happen to collide.
 function isPolicyNumberConflict(err: unknown): boolean {
-  const code = (err as { code?: string; driverError?: { code?: string } })
-    ?.code ?? (err as { driverError?: { code?: string } })?.driverError?.code;
+  const code =
+    (err as { code?: string; driverError?: { code?: string } })?.code ??
+    (err as { driverError?: { code?: string } })?.driverError?.code;
   const constraint =
     (err as { constraint?: string; driverError?: { constraint?: string } })
       ?.constraint ??
-    (err as { driverError?: { constraint?: string } })?.driverError
-      ?.constraint;
+    (err as { driverError?: { constraint?: string } })?.driverError?.constraint;
   return code === '23505' && constraint === 'UQ_policy_number';
 }
 
@@ -148,7 +148,7 @@ export class PoliciesService {
       throw new ConflictException(
         policy.status === PolicyStatus.AWAITING_PARTNER_PAYMENT
           ? "Bu ariza allaqachon Asia Insurance'ga yuborilgan — to'lov kutilmoqda"
-          : "Ariza hali narxlanmagan yoki allaqachon yakunlangan",
+          : 'Ariza hali narxlanmagan yoki allaqachon yakunlangan',
       );
     }
     const user = await this.usersService.findById(userId);
@@ -256,7 +256,10 @@ export class PoliciesService {
     throw new Error("Polis raqamini generatsiya qilib bo'lmadi");
   }
 
-  async notifyConfirmed(policy: InsurancePolicy, userId: string): Promise<void> {
+  async notifyConfirmed(
+    policy: InsurancePolicy,
+    userId: string,
+  ): Promise<void> {
     const user = await this.usersService.findById(userId);
     if (user) {
       await this.notificationsService.notifyPolicyConfirmed(policy, user);

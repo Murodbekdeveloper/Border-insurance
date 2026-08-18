@@ -12,7 +12,7 @@ export class AdminSecurityController {
   constructor(private readonly loginAttemptsService: LoginAttemptsService) {}
 
   @Get('login-attempts')
-  @ApiOperation({ summary: "Admin panelga kirish urinishlari tarixi" })
+  @ApiOperation({ summary: 'Admin panelga kirish urinishlari tarixi' })
   async list(@Query() query: PaginationQueryDto) {
     const [data, total] = await this.loginAttemptsService.findAllPaginated(
       query.page,

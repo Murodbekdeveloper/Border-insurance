@@ -14,7 +14,9 @@ import { PaymentCallbackDto } from './dto/payment-callback.dto';
 @UseGuards(PaymentCallbackApiKeyGuard)
 @Controller('partner/payment-callback')
 export class PaymentCallbackController {
-  constructor(private readonly insurancePartnerService: InsurancePartnerService) {}
+  constructor(
+    private readonly insurancePartnerService: InsurancePartnerService,
+  ) {}
 
   @Post()
   @ApiOperation({

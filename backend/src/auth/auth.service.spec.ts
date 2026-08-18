@@ -141,7 +141,7 @@ describe('AuthService', () => {
       );
       expect(result).toEqual({
         email: 'aziz@example.com',
-        message: expect.any(String),
+        message: expect.any(String) as string,
       });
       expect((result as { accessToken?: string }).accessToken).toBeUndefined();
     });

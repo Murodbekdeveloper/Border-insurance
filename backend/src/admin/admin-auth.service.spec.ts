@@ -189,7 +189,7 @@ describe('AdminAuthService', () => {
 
       expect(repository.update).toHaveBeenCalledWith(
         { id: 'admin-1' },
-        { passwordHash: expect.any(String) },
+        { passwordHash: expect.any(String) as string },
       );
     });
   });

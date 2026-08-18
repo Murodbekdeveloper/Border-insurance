@@ -13,7 +13,7 @@ export class AppleTokenDto {
   // berganda va faqat qurilmaning o'zida qaytaradi — identityToken ichida
   // umuman kelmaydi. Keyingi kirishlarda bo'sh qoldiriladi.
   @ApiPropertyOptional({
-    description: "Faqat birinchi kirishda mobil ilova yuboradi",
+    description: 'Faqat birinchi kirishda mobil ilova yuboradi',
   })
   @IsOptional()
   @IsString()

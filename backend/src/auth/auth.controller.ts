@@ -49,7 +49,10 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Emailga yuborilgan tasdiqlash kodini tekshirish' })
   @ApiResponse({ status: 200, type: AuthResponseDto })
-  @ApiResponse({ status: 400, description: "Kod noto'g'ri yoki muddati tugagan" })
+  @ApiResponse({
+    status: 400,
+    description: "Kod noto'g'ri yoki muddati tugagan",
+  })
   async verifyEmail(@Body() dto: VerifyEmailDto) {
     return this.authService.verifyEmail(dto);
   }
@@ -108,10 +111,10 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({
     summary:
-      "Mobil ilovaning native Google Sign-In (qurilma akkaunt tanlash oynasi) orqali olingan ID token bilan kirish",
+      'Mobil ilovaning native Google Sign-In (qurilma akkaunt tanlash oynasi) orqali olingan ID token bilan kirish',
   })
   @ApiResponse({ status: 200, type: AuthResponseDto })
-  @ApiResponse({ status: 401, description: "Google tokeni yaroqsiz" })
+  @ApiResponse({ status: 401, description: 'Google tokeni yaroqsiz' })
   async googleToken(@Body() dto: GoogleTokenDto) {
     return this.authService.loginWithGoogleIdToken(dto.idToken);
   }
@@ -120,10 +123,10 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({
     summary:
-      "Mobil ilovaning native Sign in with Apple orqali olingan identityToken bilan kirish",
+      'Mobil ilovaning native Sign in with Apple orqali olingan identityToken bilan kirish',
   })
   @ApiResponse({ status: 200, type: AuthResponseDto })
-  @ApiResponse({ status: 401, description: "Apple tokeni yaroqsiz" })
+  @ApiResponse({ status: 401, description: 'Apple tokeni yaroqsiz' })
   async appleToken(@Body() dto: AppleTokenDto) {
     return this.authService.loginWithAppleIdToken(
       dto.identityToken,

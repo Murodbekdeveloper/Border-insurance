@@ -83,7 +83,10 @@ export class PaymentsService {
           .setLock('pessimistic_write')
           .where('policy.id = :id', { id: policy.id })
           .getOne();
-        if (!lockedPolicy || lockedPolicy.status !== PolicyStatus.PENDING_PAYMENT) {
+        if (
+          !lockedPolicy ||
+          lockedPolicy.status !== PolicyStatus.PENDING_PAYMENT
+        ) {
           throw new ConflictException(
             "Bu ariza uchun to'lov allaqachon amalga oshirilgan yoki hali narx hisoblanmagan",
           );

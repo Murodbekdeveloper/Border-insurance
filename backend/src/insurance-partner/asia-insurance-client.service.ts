@@ -89,7 +89,9 @@ export class AsiaInsuranceClientService {
   }
 
   private isSandbox(): boolean {
-    return this.configService.get<string>('insurancePartner.mode') === 'sandbox';
+    return (
+      this.configService.get<string>('insurancePartner.mode') === 'sandbox'
+    );
   }
 
   private baseUrl(): string {

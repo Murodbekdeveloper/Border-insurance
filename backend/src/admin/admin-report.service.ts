@@ -16,8 +16,18 @@ export interface MonthlyReportStats {
 }
 
 const MONTH_LABELS = [
-  'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
-  'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
+  'Yanvar',
+  'Fevral',
+  'Mart',
+  'Aprel',
+  'May',
+  'Iyun',
+  'Iyul',
+  'Avgust',
+  'Sentabr',
+  'Oktabr',
+  'Noyabr',
+  'Dekabr',
 ];
 
 @Injectable()
@@ -39,22 +49,27 @@ export class AdminReportService {
     const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const end = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [newUsers, paidPolicies, revenue, successfulPayments, failedPayments] =
-      await Promise.all([
-        this.usersService.countCreatedBetween(start, end),
-        this.policiesService.countPaidBetween(start, end),
-        this.policiesService.sumRevenueBetween(start, end),
-        this.paymentsService.countByStatusBetween(
-          PaymentStatus.SUCCESS,
-          start,
-          end,
-        ),
-        this.paymentsService.countByStatusBetween(
-          PaymentStatus.FAILED,
-          start,
-          end,
-        ),
-      ]);
+    const [
+      newUsers,
+      paidPolicies,
+      revenue,
+      successfulPayments,
+      failedPayments,
+    ] = await Promise.all([
+      this.usersService.countCreatedBetween(start, end),
+      this.policiesService.countPaidBetween(start, end),
+      this.policiesService.sumRevenueBetween(start, end),
+      this.paymentsService.countByStatusBetween(
+        PaymentStatus.SUCCESS,
+        start,
+        end,
+      ),
+      this.paymentsService.countByStatusBetween(
+        PaymentStatus.FAILED,
+        start,
+        end,
+      ),
+    ]);
 
     return {
       monthLabel: `${MONTH_LABELS[start.getMonth()]} ${start.getFullYear()}`,
@@ -93,6 +108,8 @@ export class AdminReportService {
         );
       }
     }
-    this.logger.log(`Sent monthly report for ${stats.monthLabel} to ${admins.length} admin(s)`);
+    this.logger.log(
+      `Sent monthly report for ${stats.monthLabel} to ${admins.length} admin(s)`,
+    );
   }
 }

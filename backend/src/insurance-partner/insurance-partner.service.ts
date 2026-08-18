@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, IsNull, LessThan, Not, Repository } from 'typeorm';
 import { PartnerSubmission } from './entities/partner-submission.entity';
@@ -63,7 +67,9 @@ export class InsurancePartnerService {
     // plain insert() (not save() on a locally-built entity) is required to
     // avoid TypeORM trying to write an undefined value for it.
     const insertResult = await repo.insert({ policyId, startDate });
-    return repo.findOneByOrFail({ id: insertResult.identifiers[0].id as string });
+    return repo.findOneByOrFail({
+      id: insertResult.identifiers[0].id as string,
+    });
   }
 
   async findByPolicyId(policyId: string): Promise<PartnerSubmission | null> {
@@ -163,7 +169,9 @@ export class InsurancePartnerService {
   private assertReadyForSubmission(policy: InsurancePolicy, user: User): void {
     const missing: string[] = [];
     if (!user.passportSeries || !user.passportNumber || !user.birthDate) {
-      missing.push("arizachining pasport ma'lumotlari/tug'ilgan sanasi (profil)");
+      missing.push(
+        "arizachining pasport ma'lumotlari/tug'ilgan sanasi (profil)",
+      );
     }
     if (!policy.vehicle.ownerIsApplicant) {
       if (
@@ -171,7 +179,9 @@ export class InsurancePartnerService {
         !policy.vehicle.ownerPassportNumber ||
         !policy.vehicle.ownerBirthDate
       ) {
-        missing.push("transport egasining pasport ma'lumotlari/tug'ilgan sanasi");
+        missing.push(
+          "transport egasining pasport ma'lumotlari/tug'ilgan sanasi",
+        );
       }
     }
     if (policy.driverRestriction === DriverRestriction.RESTRICTED) {

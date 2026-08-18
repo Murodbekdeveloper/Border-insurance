@@ -82,7 +82,8 @@ export default () => ({
     // swagger.asia-insurance.uz/swagger-files/osago3.yaml). Auth is HTTP
     // Basic (securitySchemes.BasicAuth in their spec) — login/password,
     // not a bearer token.
-    apiUrl: process.env.INSURANCE_PARTNER_API_URL ?? 'https://ais.asia-insurance.uz',
+    apiUrl:
+      process.env.INSURANCE_PARTNER_API_URL ?? 'https://ais.asia-insurance.uz',
     // Separate sandbox host+base-path Asia Insurance gave us for testing
     // (2026-08-18) — structurally different from apiUrl above, not just a
     // different hostname, so AsiaInsuranceClientService routes per-call

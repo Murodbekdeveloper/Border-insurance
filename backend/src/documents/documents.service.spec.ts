@@ -2,7 +2,9 @@ import { ConfigService } from '@nestjs/config';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { DocumentsService, OCR_NOT_CONFIGURED_CODE } from './documents.service';
 
-function makeFile(overrides: Partial<Express.Multer.File> = {}): Express.Multer.File {
+function makeFile(
+  overrides: Partial<Express.Multer.File> = {},
+): Express.Multer.File {
   return {
     buffer: Buffer.from('fake-image-bytes'),
     mimetype: 'image/jpeg',
@@ -44,7 +46,9 @@ describe('DocumentsService', () => {
   it('throws OCR_NOT_CONFIGURED when no API key is set', async () => {
     const service = makeService('');
 
-    await expect(service.extract([makeFile()], 'vehicle_tech_passport')).rejects.toMatchObject({
+    await expect(
+      service.extract([makeFile()], 'vehicle_tech_passport'),
+    ).rejects.toMatchObject({
       response: { code: OCR_NOT_CONFIGURED_CODE },
     });
     await expect(
@@ -54,7 +58,7 @@ describe('DocumentsService', () => {
 
   it('calls the Gemini Interactions API and returns parsed fields', async () => {
     const fetchMock = jest.fn().mockResolvedValue({
-      json: async () =>
+      json: () =>
         modelOutputResponse({
           plateNumber: '01 A 123 AA',
           techPassportSeries: 'AAB',
@@ -62,7 +66,7 @@ describe('DocumentsService', () => {
           techPassportIssueDate: '2022-05-10',
         }),
     });
-    global.fetch = fetchMock as unknown as typeof fetch;
+    global.fetch = fetchMock;
 
     const service = makeService('test-key');
     const result = await service.extract([makeFile()], 'vehicle_tech_passport');
@@ -74,24 +78,30 @@ describe('DocumentsService', () => {
       techPassportIssueDate: '2022-05-10',
     });
 
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe('https://generativelanguage.googleapis.com/v1beta/interactions');
-    expect(init.headers['x-goog-api-key']).toBe('test-key');
-    const body = JSON.parse(init.body as string);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/interactions',
+    );
+    const headers = init.headers as Record<string, string>;
+    expect(headers['x-goog-api-key']).toBe('test-key');
+    const body = JSON.parse(init.body as string) as {
+      model: string;
+      response_format: { mime_type: string };
+    };
     expect(body.model).toBe('gemini-flash-latest');
     expect(body.response_format.mime_type).toBe('application/json');
   });
 
   it('drops empty-string fields the model could not read confidently', async () => {
     global.fetch = jest.fn().mockResolvedValue({
-      json: async () =>
+      json: () =>
         modelOutputResponse({
           passportSeries: 'AB',
           passportNumber: '',
           licenseNumber: '',
           licenseIssueDate: '2020-01-15',
         }),
-    }) as unknown as typeof fetch;
+    });
 
     const service = makeService('test-key');
     const result = await service.extract([makeFile()], 'driver_license');
@@ -104,7 +114,7 @@ describe('DocumentsService', () => {
 
   it('returns fullName/birthDate when the photo is a passport, not a license', async () => {
     global.fetch = jest.fn().mockResolvedValue({
-      json: async () =>
+      json: () =>
         modelOutputResponse({
           fullName: 'Ali Valiyev',
           birthDate: '1990-01-01',
@@ -113,7 +123,7 @@ describe('DocumentsService', () => {
           licenseNumber: '',
           licenseIssueDate: '',
         }),
-    }) as unknown as typeof fetch;
+    });
 
     const service = makeService('test-key');
     const result = await service.extract([makeFile()], 'driver_license');
@@ -128,19 +138,24 @@ describe('DocumentsService', () => {
 
   it('sends every uploaded file (e.g. front + back) as a separate image part', async () => {
     const fetchMock = jest.fn().mockResolvedValue({
-      json: async () => modelOutputResponse({ fullName: 'Ali Valiyev' }),
+      json: () => modelOutputResponse({ fullName: 'Ali Valiyev' }),
     });
-    global.fetch = fetchMock as unknown as typeof fetch;
+    global.fetch = fetchMock;
 
     const service = makeService('test-key');
     await service.extract(
-      [makeFile({ mimetype: 'image/jpeg' }), makeFile({ mimetype: 'image/png' })],
+      [
+        makeFile({ mimetype: 'image/jpeg' }),
+        makeFile({ mimetype: 'image/png' }),
+      ],
       'driver_license',
     );
 
-    const [, init] = fetchMock.mock.calls[0];
-    const body = JSON.parse(init.body as string);
-    const imageParts = body.input.filter((part: { type: string }) => part.type === 'image');
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as {
+      input: { type: string; mime_type?: string }[];
+    };
+    const imageParts = body.input.filter((part) => part.type === 'image');
     expect(imageParts).toHaveLength(2);
     expect(imageParts[0].mime_type).toBe('image/jpeg');
     expect(imageParts[1].mime_type).toBe('image/png');
@@ -148,12 +163,12 @@ describe('DocumentsService', () => {
 
   it('throws when Gemini returns an error', async () => {
     global.fetch = jest.fn().mockResolvedValue({
-      json: async () => ({ errors: [{ message: 'quota exceeded' }] }),
-    }) as unknown as typeof fetch;
+      json: () => ({ errors: [{ message: 'quota exceeded' }] }),
+    });
 
     const service = makeService('test-key');
-    await expect(service.extract([makeFile()], 'driver_license')).rejects.toThrow(
-      'quota exceeded',
-    );
+    await expect(
+      service.extract([makeFile()], 'driver_license'),
+    ).rejects.toThrow('quota exceeded');
   });
 });

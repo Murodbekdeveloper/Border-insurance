@@ -12,21 +12,21 @@ import { CreateVehicleDto } from './dto/create-vehicle.dto';
 // mapped to a friendly, field-specific message instead of a raw 500.
 const UNIQUE_CONSTRAINT_MESSAGES: Record<string, string> = {
   UQ_vehicle_plate_number:
-    'Bu davlat raqami bilan transport vositasi allaqachon ro\'yxatdan o\'tgan',
+    "Bu davlat raqami bilan transport vositasi allaqachon ro'yxatdan o'tgan",
   UQ_vehicle_body_number:
-    'Bu kuzov raqami bilan transport vositasi allaqachon ro\'yxatdan o\'tgan',
+    "Bu kuzov raqami bilan transport vositasi allaqachon ro'yxatdan o'tgan",
   UQ_vehicle_engine_number:
-    'Bu dvigatel raqami bilan transport vositasi allaqachon ro\'yxatdan o\'tgan',
+    "Bu dvigatel raqami bilan transport vositasi allaqachon ro'yxatdan o'tgan",
 };
 
 function uniqueConstraintMessage(err: unknown): string | null {
-  const code = (err as { code?: string; driverError?: { code?: string } })
-    ?.code ?? (err as { driverError?: { code?: string } })?.driverError?.code;
+  const code =
+    (err as { code?: string; driverError?: { code?: string } })?.code ??
+    (err as { driverError?: { code?: string } })?.driverError?.code;
   const constraint =
     (err as { constraint?: string; driverError?: { constraint?: string } })
       ?.constraint ??
-    (err as { driverError?: { constraint?: string } })?.driverError
-      ?.constraint;
+    (err as { driverError?: { constraint?: string } })?.driverError?.constraint;
   if (code !== '23505' || !constraint) return null;
   return UNIQUE_CONSTRAINT_MESSAGES[constraint] ?? null;
 }

@@ -40,8 +40,7 @@ const HUMO_PREFIXES = ['9860'];
 function detectCardType(cardNumber: string): CardType | null {
   if (UZCARD_PREFIXES.some((p) => cardNumber.startsWith(p)))
     return CardType.UZCARD;
-  if (HUMO_PREFIXES.some((p) => cardNumber.startsWith(p)))
-    return CardType.HUMO;
+  if (HUMO_PREFIXES.some((p) => cardNumber.startsWith(p))) return CardType.HUMO;
 
   if (cardNumber.startsWith('4')) return CardType.VISA;
   const prefix2 = Number(cardNumber.slice(0, 2));

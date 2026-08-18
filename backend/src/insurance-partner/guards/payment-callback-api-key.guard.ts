@@ -29,7 +29,7 @@ export class PaymentCallbackApiKeyGuard implements CanActivate {
     const header = request.headers.authorization ?? '';
     const [scheme, token] = header.split(' ');
     if (scheme !== 'Bearer' || token !== expectedToken) {
-      throw new UnauthorizedException('Noto\'g\'ri yoki yo\'q token');
+      throw new UnauthorizedException("Noto'g'ri yoki yo'q token");
     }
     return true;
   }
