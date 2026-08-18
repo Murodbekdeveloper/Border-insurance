@@ -87,8 +87,15 @@ export default () => ({
     // swagger.asia-insurance.uz/swagger-files/osago3.yaml). Auth is HTTP
     // Basic (securitySchemes.BasicAuth in their spec) — login/password,
     // not a bearer token.
+    // CORRECTED 2026-08-19: bare https://ais.asia-insurance.uz now 301s to
+    // their Oracle APEX login page (/apex/r/ins/asia/login_desktop) — the
+    // real API base needs the same /apex/ins/osago_v3 prefix as the
+    // sandbox host, confirmed by testing directly against production. This
+    // had been silently broken (every outbound call 404ing at the Tomcat
+    // layer, never reaching Oracle APEX/ORDS at all) until this fix.
     apiUrl:
-      process.env.INSURANCE_PARTNER_API_URL ?? 'https://ais.asia-insurance.uz',
+      process.env.INSURANCE_PARTNER_API_URL ??
+      'https://ais.asia-insurance.uz/apex/ins/osago_v3',
     // Separate sandbox host+base-path Asia Insurance gave us for testing
     // (2026-08-18) — structurally different from apiUrl above, not just a
     // different hostname, so AsiaInsuranceClientService routes per-call
