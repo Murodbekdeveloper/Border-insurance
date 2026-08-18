@@ -108,7 +108,14 @@ export class AuthService {
     if (!user.isActive) {
       throw new ForbiddenException('Hisobingiz bloklangan');
     }
-    if (!user.isEmailVerified) {
+    // TEMP (2026-08-19): SKIP_EMAIL_VERIFICATION_CHECK lets login bypass the
+    // isEmailVerified gate — for testing the Asia Insurance submission flow
+    // while SMTP deliverability to Gmail is still being diagnosed. Defaults
+    // to unset/false everywhere; must be turned back off once done.
+    const skipCheck = this.configService.get<boolean>(
+      'skipEmailVerificationCheck',
+    );
+    if (!user.isEmailVerified && !skipCheck) {
       throw new ForbiddenException({
         code: EMAIL_NOT_VERIFIED_CODE,
         message: 'Email hali tasdiqlanmagan — tasdiqlash kodini kiriting',

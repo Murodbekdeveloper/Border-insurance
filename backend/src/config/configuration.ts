@@ -18,6 +18,11 @@ export default () => ({
   sentry: {
     dsn: process.env.SENTRY_DSN ?? '',
   },
+  // TEMP (2026-08-19): see the comment in AuthService.login() — must be
+  // unset/false in the real deployment once the SMTP deliverability issue
+  // is resolved and this testing aid is no longer needed.
+  skipEmailVerificationCheck:
+    process.env.SKIP_EMAIL_VERIFICATION_CHECK === 'true',
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET ?? 'dev_access_secret',
     // Expressed in seconds (not "15m"/"7d") so it can be passed to
