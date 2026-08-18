@@ -28,14 +28,21 @@ const PROMPT: Record<DocumentType, string> = {
     "texpasport raqami va texpasport berilgan sanani o'qib, so'ralgan JSON " +
     "sxemasi bo'yicha qaytaring.",
   driver_license:
-    "Bu rasm(lar)da O'zbekiston fuqarosi pasporti/ID-kartasi YOKI haydovchilik " +
-    "guvohnomasi bor (qaysi biri ekanini rasmning o'zidan aniqlang) — old va " +
-    "orqa tomonining ikkalasi ham berilgan bo'lishi mumkin, ikkalasini ham " +
-    "diqqat bilan ko'rib chiqing, chunki F.I.O. va tug'ilgan sana ko'pincha " +
-    "rasm(lar)ning bir qismida, seriya/raqam esa boshqa qismida bo'lishi " +
-    "mumkin. Agar pasport/ID-karta bo'lsa — to'liq F.I.O.ni lotin " +
-    "(krill emas) alifbosida, tug'ilgan sanani, pasport seriyasi va " +
-    "raqamini o'qing. Agar haydovchilik guvohnomasi bo'lsa — guvohnoma " +
+    "Bu rasm(lar)da ISTALGAN DAVLATNING fuqaro pasporti/ID-kartasi YOKI " +
+    "haydovchilik guvohnomasi bor — O'zbekiston fuqarosiniki bo'lishi shart " +
+    "emas, xorijiy davlat hujjati ham bo'lishi mumkin (qaysi biri va qaysi " +
+    "davlatniki ekanini rasmning o'zidan aniqlang). Har bir davlat/hujjat " +
+    "turi o'zining formatida bo'ladi — O'zbekistonning eski pasporti " +
+    "(2 harf + 7 raqamli seriya), yangi ID-karta (alohida seriyasiz, " +
+    "faqat raqam), yoki xorijiy pasport (har xil uzunlik/format) — " +
+    "hujjatda aynan qanday yozilgan bo'lsa, formatni cheklamasdan/taxmin " +
+    "qilmasdan o'sha ko'rinishda o'qing. Old va orqa tomonining ikkalasi " +
+    "ham berilgan bo'lishi mumkin, ikkalasini ham diqqat bilan ko'rib " +
+    "chiqing, chunki F.I.O. va tug'ilgan sana ko'pincha rasm(lar)ning bir " +
+    "qismida, seriya/raqam esa boshqa qismida bo'lishi mumkin. Agar " +
+    "pasport/ID-karta bo'lsa — to'liq F.I.O.ni lotin (krill emas) " +
+    "alifbosida, tug'ilgan sanani, hujjat seriyasi (agar mavjud bo'lsa) " +
+    "va raqamini o'qing. Agar haydovchilik guvohnomasi bo'lsa — guvohnoma " +
     "raqami va berilgan sanasini o'qing. Hujjatda umuman ko'rinmagan " +
     "maydonlarni bo'sh qoldiring — taxmin qilmang.",
 };

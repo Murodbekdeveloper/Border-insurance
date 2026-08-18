@@ -47,17 +47,32 @@ export const FIELD_SCHEMAS: Record<DocumentType, object> = {
         type: 'string',
         description: "Tug'ilgan sana, YYYY-MM-DD formatida",
       },
+      // No fixed format assumed — O'zbekiston eski pasporti (2 harf), yangi
+      // ID-karta (faqat raqam, seriyasiz) va xorijiy pasportlar (davlatiga
+      // qarab har xil) barchasi shu ikki maydonga tushadi. Series bo'lmasa
+      // — bo'sh, number esa hujjatda yozilgan to'liq identifikatorni oladi.
       passportSeries: {
         type: 'string',
-        description: 'Fuqaro pasporti seriyasi — 2 ta lotin harf',
+        description:
+          "Hujjatdagi seriya qismi, AGAR alohida seriya mavjud bo'lsa " +
+          "(masalan O'zbekiston eski pasportida 2 ta lotin harf). Ko'p " +
+          "zamonaviy ID-karta/xorijiy pasportlarda alohida seriya yo'q — " +
+          "bunday holda bo'sh qoldiring, uni raqam maydoniga qo'ymang.",
       },
       passportNumber: {
         type: 'string',
-        description: 'Fuqaro pasporti raqami — 7 ta raqam',
+        description:
+          "Hujjatning identifikatsiya raqami — millati/hujjat turidan " +
+          "qat'iy nazar, hujjatda aynan qanday yozilgan bo'lsa, harflar " +
+          "va raqamlar bilan birga, o'sha ko'rinishda o'qing (uzunlik va " +
+          "formatni cheklamang — O'zbekiston, xorijiy pasport, ID-karta, " +
+          "istalgan davlat hujjati bo'lishi mumkin).",
       },
       licenseNumber: {
         type: 'string',
-        description: "Haydovchilik guvohnomasi raqami (8-12 ta belgi)",
+        description:
+          "Haydovchilik guvohnomasi raqami — istalgan davlat formatida, " +
+          "hujjatda yozilganidek aynan o'qing (uzunlik/formatni cheklamang).",
       },
       licenseIssueDate: {
         type: 'string',
