@@ -111,9 +111,9 @@ function VehicleInfoContent() {
     }
   };
 
-  const handleExtractDocument = async (file: File) => {
+  const handleExtractDocument = async (files: File[]) => {
     try {
-      const fields = await extractVehicleDocument(file);
+      const fields = await extractVehicleDocument(files);
       const known: (keyof VehicleFormData)[] = [
         'plateNumber',
         'techPassportSeries',

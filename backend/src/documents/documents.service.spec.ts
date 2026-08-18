@@ -44,11 +44,11 @@ describe('DocumentsService', () => {
   it('throws OCR_NOT_CONFIGURED when no API key is set', async () => {
     const service = makeService('');
 
-    await expect(service.extract(makeFile(), 'vehicle_tech_passport')).rejects.toMatchObject({
+    await expect(service.extract([makeFile()], 'vehicle_tech_passport')).rejects.toMatchObject({
       response: { code: OCR_NOT_CONFIGURED_CODE },
     });
     await expect(
-      service.extract(makeFile(), 'vehicle_tech_passport'),
+      service.extract([makeFile()], 'vehicle_tech_passport'),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 
@@ -65,7 +65,7 @@ describe('DocumentsService', () => {
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const service = makeService('test-key');
-    const result = await service.extract(makeFile(), 'vehicle_tech_passport');
+    const result = await service.extract([makeFile()], 'vehicle_tech_passport');
 
     expect(result.fields).toEqual({
       plateNumber: '01 A 123 AA',
@@ -94,7 +94,7 @@ describe('DocumentsService', () => {
     }) as unknown as typeof fetch;
 
     const service = makeService('test-key');
-    const result = await service.extract(makeFile(), 'driver_license');
+    const result = await service.extract([makeFile()], 'driver_license');
 
     expect(result.fields).toEqual({
       passportSeries: 'AB',
@@ -116,7 +116,7 @@ describe('DocumentsService', () => {
     }) as unknown as typeof fetch;
 
     const service = makeService('test-key');
-    const result = await service.extract(makeFile(), 'driver_license');
+    const result = await service.extract([makeFile()], 'driver_license');
 
     expect(result.fields).toEqual({
       fullName: 'Ali Valiyev',
@@ -126,13 +126,33 @@ describe('DocumentsService', () => {
     });
   });
 
+  it('sends every uploaded file (e.g. front + back) as a separate image part', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      json: async () => modelOutputResponse({ fullName: 'Ali Valiyev' }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const service = makeService('test-key');
+    await service.extract(
+      [makeFile({ mimetype: 'image/jpeg' }), makeFile({ mimetype: 'image/png' })],
+      'driver_license',
+    );
+
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse(init.body as string);
+    const imageParts = body.input.filter((part: { type: string }) => part.type === 'image');
+    expect(imageParts).toHaveLength(2);
+    expect(imageParts[0].mime_type).toBe('image/jpeg');
+    expect(imageParts[1].mime_type).toBe('image/png');
+  });
+
   it('throws when Gemini returns an error', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       json: async () => ({ errors: [{ message: 'quota exceeded' }] }),
     }) as unknown as typeof fetch;
 
     const service = makeService('test-key');
-    await expect(service.extract(makeFile(), 'driver_license')).rejects.toThrow(
+    await expect(service.extract([makeFile()], 'driver_license')).rejects.toThrow(
       'quota exceeded',
     );
   });

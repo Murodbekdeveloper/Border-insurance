@@ -3,11 +3,11 @@ import {
   Body,
   Controller,
   Post,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiConsumes,
@@ -19,6 +19,7 @@ import { DocumentsService } from './documents.service';
 import { ExtractDocumentDto } from './dto/extract-document.dto';
 
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
+const MAX_FILES = 2;
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
 
 @ApiTags('documents')
@@ -32,21 +33,23 @@ export class DocumentsController {
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary:
-      "Hujjat rasmidan (texpasport/guvohnoma) ma'lumotlarni OCR orqali aniqlash",
+      "Hujjat rasmi(lari)dan (texpasport/guvohnoma, old/orqa tomon) ma'lumotlarni OCR orqali aniqlash",
   })
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE_BYTES } }),
+    FilesInterceptor('files', MAX_FILES, {
+      limits: { fileSize: MAX_FILE_SIZE_BYTES },
+    }),
   )
   extract(
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFiles() files: Express.Multer.File[] | undefined,
     @Body() dto: ExtractDocumentDto,
   ) {
-    if (!file) {
+    if (!files || files.length === 0) {
       throw new BadRequestException('Rasm fayli yuborilmagan');
     }
-    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+    if (files.some((file) => !ALLOWED_MIME_TYPES.includes(file.mimetype))) {
       throw new BadRequestException('Faqat JPG yoki PNG rasm qabul qilinadi');
     }
-    return this.documentsService.extract(file, dto.documentType);
+    return this.documentsService.extract(files, dto.documentType);
   }
 }

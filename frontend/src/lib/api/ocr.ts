@@ -26,17 +26,18 @@ export interface ExtractedDriverData {
 
 const OCR_NOT_CONFIGURED_CODE = 'OCR_NOT_CONFIGURED';
 
-// Uploads the picked photo to the backend, which forwards it to Gemini —
-// the API key lives server-side only, never in the browser bundle. Field
-// names in the response match the vehicle/driver form field names
-// directly, so callers can pass them straight to react-hook-form's
-// setValue() without any remapping.
+// Uploads the picked photo(s) — e.g. a document's front and back — to the
+// backend, which forwards them to Gemini in one call. The API key lives
+// server-side only, never in the browser bundle. Field names in the
+// response match the vehicle/driver form field names directly, so callers
+// can pass them straight to react-hook-form's setValue() without any
+// remapping.
 async function extract(
-  file: File,
+  files: File[],
   documentType: 'vehicle_tech_passport' | 'driver_license',
 ): Promise<Record<string, string>> {
   const form = new FormData();
-  form.append('file', file);
+  for (const file of files) form.append('files', file);
   form.append('documentType', documentType);
 
   try {
@@ -53,10 +54,10 @@ async function extract(
   }
 }
 
-export async function extractVehicleDocument(file: File): Promise<ExtractedVehicleData> {
-  return extract(file, 'vehicle_tech_passport');
+export async function extractVehicleDocument(files: File[]): Promise<ExtractedVehicleData> {
+  return extract(files, 'vehicle_tech_passport');
 }
 
-export async function extractDriverLicense(file: File): Promise<ExtractedDriverData> {
-  return extract(file, 'driver_license');
+export async function extractDriverLicense(files: File[]): Promise<ExtractedDriverData> {
+  return extract(files, 'driver_license');
 }

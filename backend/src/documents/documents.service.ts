@@ -22,16 +22,22 @@ interface InteractionsResponse {
 
 const PROMPT: Record<DocumentType, string> = {
   vehicle_tech_passport:
-    "Bu rasmda O'zbekiston transport vositasi texnik pasporti bor. Rasmdan davlat " +
-    "raqami, texpasport seriyasi, texpasport raqami va texpasport berilgan sanani " +
-    "o'qib, so'ralgan JSON sxemasi bo'yicha qaytaring.",
+    "Bu rasm(lar)da O'zbekiston transport vositasi texnik pasporti bor — " +
+    "old va orqa tomonining ikkalasi ham berilgan bo'lishi mumkin, ikkalasini " +
+    "ham diqqat bilan ko'rib chiqing. Davlat raqami, texpasport seriyasi, " +
+    "texpasport raqami va texpasport berilgan sanani o'qib, so'ralgan JSON " +
+    "sxemasi bo'yicha qaytaring.",
   driver_license:
-    "Bu rasmda O'zbekiston fuqarosi pasporti YOKI haydovchilik guvohnomasi bor " +
-    "(qaysi biri ekanini rasmning o'zidan aniqlang). Agar pasport bo'lsa — " +
-    "to'liq F.I.O., tug'ilgan sana, pasport seriyasi va raqamini o'qing. Agar " +
-    "haydovchilik guvohnomasi bo'lsa — guvohnoma raqami va berilgan sanasini " +
-    "o'qing. Rasmda ko'rinmagan/mavjud bo'lmagan maydonlarni bo'sh qoldiring — " +
-    "ikkinchi hujjatdagi ma'lumotni taxmin qilmang.",
+    "Bu rasm(lar)da O'zbekiston fuqarosi pasporti/ID-kartasi YOKI haydovchilik " +
+    "guvohnomasi bor (qaysi biri ekanini rasmning o'zidan aniqlang) — old va " +
+    "orqa tomonining ikkalasi ham berilgan bo'lishi mumkin, ikkalasini ham " +
+    "diqqat bilan ko'rib chiqing, chunki F.I.O. va tug'ilgan sana ko'pincha " +
+    "rasm(lar)ning bir qismida, seriya/raqam esa boshqa qismida bo'lishi " +
+    "mumkin. Agar pasport/ID-karta bo'lsa — to'liq F.I.O.ni lotin " +
+    "(krill emas) alifbosida, tug'ilgan sanani, pasport seriyasi va " +
+    "raqamini o'qing. Agar haydovchilik guvohnomasi bo'lsa — guvohnoma " +
+    "raqami va berilgan sanasini o'qing. Hujjatda umuman ko'rinmagan " +
+    "maydonlarni bo'sh qoldiring — taxmin qilmang.",
 };
 
 const COMMON_INSTRUCTION =
@@ -59,7 +65,7 @@ export class DocumentsService {
   }
 
   async extract(
-    file: Express.Multer.File,
+    files: Express.Multer.File[],
     documentType: DocumentType,
   ): Promise<{ rawText: string; fields: ExtractedFields }> {
     if (!this.apiKey) {
@@ -69,14 +75,20 @@ export class DocumentsService {
       });
     }
 
-    const outputText = await this.callGemini(file, documentType);
+    const outputText = await this.callGemini(files, documentType);
     return { rawText: outputText, fields: this.parseFields(outputText) };
   }
 
   private async callGemini(
-    file: Express.Multer.File,
+    files: Express.Multer.File[],
     documentType: DocumentType,
   ): Promise<string> {
+    const imageParts = files.map((file) => ({
+      type: 'image' as const,
+      data: file.buffer.toString('base64'),
+      mime_type: file.mimetype,
+    }));
+
     const res = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/interactions',
       {
@@ -90,11 +102,7 @@ export class DocumentsService {
           model: GEMINI_MODEL,
           input: [
             { type: 'text', text: PROMPT[documentType] + COMMON_INSTRUCTION },
-            {
-              type: 'image',
-              data: file.buffer.toString('base64'),
-              mime_type: file.mimetype,
-            },
+            ...imageParts,
           ],
           response_format: {
             type: 'text',

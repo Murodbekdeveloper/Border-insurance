@@ -81,9 +81,9 @@ function DriverRestrictionContent() {
   // documents, but Gemini only fills in whichever fields are actually
   // visible on the photo it's given, so one field list covering both is
   // safe to reuse for either upload.
-  const handleExtractDriverDocument = async (file: File, index: number) => {
+  const handleExtractDriverDocument = async (files: File[], index: number) => {
     try {
-      const fields = await extractDriverLicense(file);
+      const fields = await extractDriverLicense(files);
       const known: (keyof DriverRestrictionFormData['drivers'][number])[] = [
         'fullName',
         'birthDate',
@@ -191,12 +191,12 @@ function DriverRestrictionContent() {
                   <ImageUploadCard
                     label="Pasport rasmi (ixtiyoriy)"
                     description="F.I.O., tug'ilgan sana va pasport seriya/raqamini avtomatik to'ldirish uchun"
-                    onExtract={(file) => handleExtractDriverDocument(file, index)}
+                    onExtract={(files) => handleExtractDriverDocument(files, index)}
                   />
                   <ImageUploadCard
                     label="Haydovchilik guvohnomasi rasmi (ixtiyoriy)"
                     description="Guvohnoma raqami va berilgan sanasini avtomatik to'ldirish uchun"
-                    onExtract={(file) => handleExtractDriverDocument(file, index)}
+                    onExtract={(files) => handleExtractDriverDocument(files, index)}
                   />
                 </div>
 
