@@ -100,7 +100,7 @@ export interface Driver {
   passportNumber: string;
   licenseNumber: string;
   licenseIssueDate: string;
-  drivingExperienceSince: number;
+  drivingExperienceSince: number | null;
   relativeId?: number | null;
 }
 

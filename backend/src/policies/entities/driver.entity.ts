@@ -39,8 +39,10 @@ export class Driver {
   @Column({ type: 'date' })
   licenseIssueDate: string;
 
-  @Column()
-  drivingExperienceSince: number;
+  // Never sent to Asia Insurance — nullable since the web form no longer
+  // collects it (the mobile app still does, for now).
+  @Column({ type: 'int', nullable: true })
+  drivingExperienceSince: number | null;
 
   // Asia Insurance's /save-policy Driver.relative — degree of kinship to
   // the vehicle owner, an id from GetRelativeResponse (e.g. 1 = ОТЕЦ).

@@ -26,9 +26,12 @@ const PROMPT: Record<DocumentType, string> = {
     "raqami, texpasport seriyasi, texpasport raqami va texpasport berilgan sanani " +
     "o'qib, so'ralgan JSON sxemasi bo'yicha qaytaring.",
   driver_license:
-    "Bu rasmda O'zbekiston fuqarosi pasporti yoki haydovchilik guvohnomasi bor. " +
-    "Rasmdan pasport seriyasi, pasport raqami, guvohnoma raqami va guvohnoma " +
-    "berilgan sanani o'qib, so'ralgan JSON sxemasi bo'yicha qaytaring.",
+    "Bu rasmda O'zbekiston fuqarosi pasporti YOKI haydovchilik guvohnomasi bor " +
+    "(qaysi biri ekanini rasmning o'zidan aniqlang). Agar pasport bo'lsa — " +
+    "to'liq F.I.O., tug'ilgan sana, pasport seriyasi va raqamini o'qing. Agar " +
+    "haydovchilik guvohnomasi bo'lsa — guvohnoma raqami va berilgan sanasini " +
+    "o'qing. Rasmda ko'rinmagan/mavjud bo'lmagan maydonlarni bo'sh qoldiring — " +
+    "ikkinchi hujjatdagi ma'lumotni taxmin qilmang.",
 };
 
 const COMMON_INSTRUCTION =

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { DriverRestrictionFormData, getDriverRestrictionSchema } from '@/lib/validation/schemas';
-import { maskAlnumUpper, maskDigits, maskLetters, maskLettersStrict, maskYear } from '@/lib/masks';
+import { maskAlnumUpper, maskDigits, maskLetters, maskLettersStrict } from '@/lib/masks';
 import { createPolicy } from '@/lib/api/policies';
 import { extractDriverLicense, OcrNotConfiguredError } from '@/lib/api/ocr';
 import { getRelatives, InsurancePartnerNotConfiguredError, RelativeOption } from '@/lib/api/insurancePartner';
@@ -27,7 +27,6 @@ const emptyDriver = {
   passportNumber: '',
   licenseNumber: '',
   licenseIssueDate: '',
-  drivingExperienceSince: '',
   relativeId: undefined,
 };
 
@@ -77,10 +76,17 @@ function DriverRestrictionContent() {
   const { fields, append, remove } = useFieldArray({ control, name: 'drivers' });
   const restriction = watch('driverRestriction');
 
-  const handleExtractLicense = async (file: File, index: number) => {
+  // Same handler for both the passport and the license upload cards below —
+  // a driver's passport and driving license are two separate physical
+  // documents, but Gemini only fills in whichever fields are actually
+  // visible on the photo it's given, so one field list covering both is
+  // safe to reuse for either upload.
+  const handleExtractDriverDocument = async (file: File, index: number) => {
     try {
       const fields = await extractDriverLicense(file);
       const known: (keyof DriverRestrictionFormData['drivers'][number])[] = [
+        'fullName',
+        'birthDate',
         'passportSeries',
         'passportNumber',
         'licenseNumber',
@@ -102,7 +108,7 @@ function DriverRestrictionContent() {
       if (err instanceof OcrNotConfiguredError) {
         return {
           status: 'not_configured' as const,
-          message: 'Google Vision API hali ulanmagan. Hozircha ma\'lumotlarni pastdagi maydonlarga qo\'lda kiriting.',
+          message: 'Hujjatni avtomatik o\'qish xizmati hali ulanmagan. Hozircha ma\'lumotlarni pastdagi maydonlarga qo\'lda kiriting.',
         };
       }
       return { status: 'error' as const, message: 'Rasmni tahlil qilishda xatolik yuz berdi' };
@@ -181,11 +187,18 @@ function DriverRestrictionContent() {
                   )}
                 </div>
 
-                <ImageUploadCard
-                  label="Haydovchilik guvohnomasi rasmi (ixtiyoriy)"
-                  description="Rasmni yuklang — Google Vision API ulanganda ma'lumotlar avtomatik to'ldiriladi"
-                  onExtract={(file) => handleExtractLicense(file, index)}
-                />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <ImageUploadCard
+                    label="Pasport rasmi (ixtiyoriy)"
+                    description="F.I.O., tug'ilgan sana va pasport seriya/raqamini avtomatik to'ldirish uchun"
+                    onExtract={(file) => handleExtractDriverDocument(file, index)}
+                  />
+                  <ImageUploadCard
+                    label="Haydovchilik guvohnomasi rasmi (ixtiyoriy)"
+                    description="Guvohnoma raqami va berilgan sanasini avtomatik to'ldirish uchun"
+                    onExtract={(file) => handleExtractDriverDocument(file, index)}
+                  />
+                </div>
 
                 <div className="mt-5 grid grid-cols-2 gap-5">
                   <Input
@@ -241,14 +254,6 @@ function DriverRestrictionContent() {
                     max={new Date().toISOString().split('T')[0]}
                     error={errors.drivers?.[index]?.licenseIssueDate?.message}
                     {...register(`drivers.${index}.licenseIssueDate`)}
-                  />
-                  <Input
-                    label="Staj boshlangan yil"
-                    inputMode="numeric"
-                    placeholder="2015"
-                    error={errors.drivers?.[index]?.drivingExperienceSince?.message}
-                    {...register(`drivers.${index}.drivingExperienceSince`)}
-                    onChange={(e) => setValue(`drivers.${index}.drivingExperienceSince`, maskYear(e.target.value), { shouldValidate: true, shouldDirty: true })}
                   />
                   {relativeOptions.length > 0 && (
                     <Select

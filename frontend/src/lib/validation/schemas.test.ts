@@ -95,7 +95,6 @@ describe('driverRestrictionSchema', () => {
     passportNumber: '1234567',
     licenseNumber: 'LIC123456',
     licenseIssueDate: '2015-06-01',
-    drivingExperienceSince: '2015',
   };
 
   it('allows an unrestricted policy with no drivers', () => {

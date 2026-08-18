@@ -48,12 +48,15 @@ export class DriverDto {
   @IsDateString()
   licenseIssueDate: string;
 
-  @ApiProperty({ example: 2015 })
+  // Never sent to Asia Insurance — optional since the web form no longer
+  // collects it (the mobile app still does, for now).
+  @ApiPropertyOptional({ example: 2015 })
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1950)
   @Max(CURRENT_YEAR)
-  drivingExperienceSince: number;
+  drivingExperienceSince?: number;
 
   // Asia Insurance's /save-policy Driver.relative — degree of kinship to
   // the vehicle owner, an id from GET /insurance-partner/relatives.

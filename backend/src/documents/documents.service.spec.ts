@@ -102,6 +102,30 @@ describe('DocumentsService', () => {
     });
   });
 
+  it('returns fullName/birthDate when the photo is a passport, not a license', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      json: async () =>
+        modelOutputResponse({
+          fullName: 'Ali Valiyev',
+          birthDate: '1990-01-01',
+          passportSeries: 'AB',
+          passportNumber: '1234567',
+          licenseNumber: '',
+          licenseIssueDate: '',
+        }),
+    }) as unknown as typeof fetch;
+
+    const service = makeService('test-key');
+    const result = await service.extract(makeFile(), 'driver_license');
+
+    expect(result.fields).toEqual({
+      fullName: 'Ali Valiyev',
+      birthDate: '1990-01-01',
+      passportSeries: 'AB',
+      passportNumber: '1234567',
+    });
+  });
+
   it('throws when Gemini returns an error', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       json: async () => ({ errors: [{ message: 'quota exceeded' }] }),

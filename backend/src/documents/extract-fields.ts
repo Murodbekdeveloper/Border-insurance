@@ -31,9 +31,22 @@ export const FIELD_SCHEMAS: Record<DocumentType, object> = {
       },
     },
   },
+  // Covers both documents a driver uploads (passport photo and driving
+  // license photo) with one schema — whichever photo comes in, only the
+  // fields actually visible on it get filled; DocumentsService already
+  // drops anything the model couldn't read confidently.
   driver_license: {
     type: 'object',
     properties: {
+      fullName: {
+        type: 'string',
+        description:
+          "Pasportdagi to'liq F.I.O. (familiya ism sharif), hujjatda yozilganidek",
+      },
+      birthDate: {
+        type: 'string',
+        description: "Tug'ilgan sana, YYYY-MM-DD formatida",
+      },
       passportSeries: {
         type: 'string',
         description: 'Fuqaro pasporti seriyasi — 2 ta lotin harf',

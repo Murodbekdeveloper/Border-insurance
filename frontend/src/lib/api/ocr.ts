@@ -3,7 +3,7 @@ import { apiClient } from '@/lib/api/client';
 
 export class OcrNotConfiguredError extends Error {
   constructor() {
-    super('Google Vision API hali ulanmagan');
+    super("Hujjatni avtomatik o'qish xizmati hali ulanmagan");
     this.name = 'OcrNotConfiguredError';
   }
 }
@@ -16,6 +16,8 @@ export interface ExtractedVehicleData {
 }
 
 export interface ExtractedDriverData {
+  fullName?: string;
+  birthDate?: string;
   passportSeries?: string;
   passportNumber?: string;
   licenseNumber?: string;
@@ -24,9 +26,9 @@ export interface ExtractedDriverData {
 
 const OCR_NOT_CONFIGURED_CODE = 'OCR_NOT_CONFIGURED';
 
-// Uploads the picked photo to the backend, which forwards it to Google
-// Vision — the API key lives server-side only, never in the browser bundle.
-// Field names in the response match the vehicle/driver form field names
+// Uploads the picked photo to the backend, which forwards it to Gemini —
+// the API key lives server-side only, never in the browser bundle. Field
+// names in the response match the vehicle/driver form field names
 // directly, so callers can pass them straight to react-hook-form's
 // setValue() without any remapping.
 async function extract(

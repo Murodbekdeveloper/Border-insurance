@@ -136,7 +136,7 @@ function VehicleInfoContent() {
       if (err instanceof OcrNotConfiguredError) {
         return {
           status: 'not_configured' as const,
-          message: 'Google Vision API hali ulanmagan. Hozircha ma\'lumotlarni pastdagi maydonlarga qo\'lda kiriting.',
+          message: 'Hujjatni avtomatik o\'qish xizmati hali ulanmagan. Hozircha ma\'lumotlarni pastdagi maydonlarga qo\'lda kiriting.',
         };
       }
       return { status: 'error' as const, message: 'Rasmni tahlil qilishda xatolik yuz berdi' };
@@ -148,7 +148,7 @@ function VehicleInfoContent() {
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
         <ImageUploadCard
           label="Texpasport rasmi (ixtiyoriy)"
-          description="Rasmni yuklang — Google Vision API ulanganda ma'lumotlar avtomatik to'ldiriladi"
+          description="Davlat raqami, texpasport seriya/raqami va berilgan sanani avtomatik to'ldirish uchun"
           onExtract={handleExtractDocument}
         />
 

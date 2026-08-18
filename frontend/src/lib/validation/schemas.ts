@@ -100,11 +100,6 @@ const driverBaseSchema = z.object({
     .string()
     .min(1, 'Guvohnoma berilgan sanasini kiriting')
     .refine((val) => new Date(val) <= new Date(), 'Sana kelajakda bo\'lishi mumkin emas'),
-  drivingExperienceSince: z
-    .string()
-    .regex(/^[0-9]{4}$/, 'Stajning boshlanish yilini kiriting')
-    .refine((val) => Number(val) >= 1950, 'Yil noto\'g\'ri')
-    .refine((val) => Number(val) <= currentYear, `Yil ${currentYear} dan katta bo'lishi mumkin emas`),
   // Asia Insurance API hali ulanmagan bo'lsa forma bu maydonni ko'rsatmaydi
   // — shuning uchun ixtiyoriy.
   relativeId: z.number().optional(),
