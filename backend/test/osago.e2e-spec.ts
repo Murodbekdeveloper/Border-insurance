@@ -5,9 +5,17 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { User } from '../src/users/entities/user.entity';
+
+interface RegisterResponseBody {
+  email: string;
+  message: string;
+}
 
 interface AuthResponseBody {
   user: { email: string; passwordHash?: string };
@@ -56,6 +64,7 @@ interface PolicyListItem {
 describe('OSAGO API (e2e)', () => {
   let app: INestApplication<App>;
   let server: App;
+  let usersRepository: Repository<User>;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -76,6 +85,7 @@ describe('OSAGO API (e2e)', () => {
     );
     await app.init();
     server = app.getHttpServer();
+    usersRepository = moduleFixture.get(getRepositoryToken(User));
   });
 
   afterAll(async () => {
@@ -91,10 +101,36 @@ describe('OSAGO API (e2e)', () => {
   let cardId: string;
 
   describe('auth', () => {
-    it('registers a new user and never returns the password hash', async () => {
+    it('registers a new user and sends a verification code instead of logging in directly', async () => {
       const res = await request(server)
         .post('/auth/register')
         .send({ fullName: 'E2E Test', email, phone: '+998901234567', password })
+        .expect(201);
+      const body = res.body as RegisterResponseBody;
+
+      expect(body.email).toBe(email);
+      expect(body.message).toEqual(expect.any(String));
+    });
+
+    it('verifies the email with the code just issued and receives tokens', async () => {
+      // No SMTP inbox to read in a test environment — the code is on the
+      // user row itself (findByEmailWithVerificationCode() reads the same
+      // column), so we look it up the same way the real flow proves receipt
+      // of the email, without needing an actual mail server.
+      // emailVerificationCode is select: false on the entity (same as
+      // passwordHash) — must opt in explicitly, same as
+      // UsersService.findByEmailWithVerificationCode() does.
+      const user = await usersRepository
+        .createQueryBuilder('user')
+        .addSelect('user.emailVerificationCode')
+        .where('user.email = :email', { email })
+        .getOne();
+      const code = user?.emailVerificationCode;
+      expect(code).toMatch(/^\d{6}$/);
+
+      const res = await request(server)
+        .post('/auth/verify-email')
+        .send({ email, code })
         .expect(201);
       const body = res.body as AuthResponseBody;
 
@@ -283,7 +319,7 @@ describe('OSAGO API (e2e)', () => {
 
     it('rejects fetching a policy that belongs to another user', async () => {
       const otherEmail = `other${Date.now()}@example.com`;
-      const otherRes = await request(server)
+      await request(server)
         .post('/auth/register')
         .send({
           fullName: 'Other User',
@@ -292,8 +328,18 @@ describe('OSAGO API (e2e)', () => {
           password,
         })
         .expect(201);
-      const otherBody = otherRes.body as AuthResponseBody;
-      const otherToken = otherBody.accessToken;
+
+      const otherUser = await usersRepository
+        .createQueryBuilder('user')
+        .addSelect('user.emailVerificationCode')
+        .where('user.email = :email', { email: otherEmail })
+        .getOne();
+
+      const verifyRes = await request(server)
+        .post('/auth/verify-email')
+        .send({ email: otherEmail, code: otherUser?.emailVerificationCode })
+        .expect(201);
+      const otherToken = (verifyRes.body as AuthResponseBody).accessToken;
 
       await request(server)
         .get(`/policies/${policyId}`)
