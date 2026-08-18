@@ -76,6 +76,11 @@ export class DocumentsService {
     }
 
     const outputText = await this.callGemini(files, documentType);
+    // TEMP diagnostic (2026-08-18): tracking down why fullName/birthDate
+    // come back empty on some passport photos — remove once resolved.
+    this.logger.log(
+      `Gemini raw output for ${documentType} (${files.length} file(s)): ${outputText}`,
+    );
     return { rawText: outputText, fields: this.parseFields(outputText) };
   }
 
