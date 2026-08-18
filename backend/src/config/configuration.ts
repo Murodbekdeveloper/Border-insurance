@@ -83,6 +83,24 @@ export default () => ({
     // Basic (securitySchemes.BasicAuth in their spec) — login/password,
     // not a bearer token.
     apiUrl: process.env.INSURANCE_PARTNER_API_URL ?? 'https://ais.asia-insurance.uz',
+    // Separate sandbox host+base-path Asia Insurance gave us for testing
+    // (2026-08-18) — structurally different from apiUrl above, not just a
+    // different hostname, so AsiaInsuranceClientService routes per-call
+    // rather than swapping this in for apiUrl wholesale.
+    // UNRESOLVED as of 2026-08-18: this host rejects the production
+    // INSURANCE_PARTNER_LOGIN/PASSWORD with 401 on every route we could
+    // reach (get-period, get-relative, sandbox/save-policy all 401;
+    // get-calc-osago's route resolves but errors on our test payload) —
+    // ask Asia Insurance whether the sandbox needs separate credentials
+    // before relying on sandbox mode for anything.
+    sandboxApiUrl:
+      process.env.INSURANCE_PARTNER_SANDBOX_API_URL ??
+      'https://online.asia-insurance.uz/apex/ins/osago_v3',
+    // 'production' (default) or 'sandbox'. Never set this to 'sandbox' in
+    // the real deployment's env vars — it exists for local/manual testing
+    // against Asia Insurance's sandbox before relying on new behavior in
+    // production.
+    mode: process.env.INSURANCE_PARTNER_MODE ?? 'production',
     login: process.env.INSURANCE_PARTNER_LOGIN ?? '',
     password: process.env.INSURANCE_PARTNER_PASSWORD ?? '',
     // Inbound: the token WE hand to the regulator/partner so they can call

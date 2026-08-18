@@ -136,4 +136,101 @@ describe('AsiaInsuranceClientService', () => {
     await expect(service.getPeriods()).rejects.toThrow(AsiaInsuranceApiError);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  describe('sandbox mode', () => {
+    function makeSandboxService(): AsiaInsuranceClientService {
+      const configService = {
+        get: (key: string) => {
+          const values: Record<string, string> = {
+            'insurancePartner.apiUrl': 'https://ais.asia-insurance.uz',
+            'insurancePartner.sandboxApiUrl':
+              'https://online.asia-insurance.uz/apex/ins/osago_v3',
+            'insurancePartner.mode': 'sandbox',
+            'insurancePartner.login': 'test-login',
+            'insurancePartner.password': 'test-password',
+          };
+          return values[key];
+        },
+      } as unknown as ConfigService;
+      return new AsiaInsuranceClientService(configService);
+    }
+
+    it('hits the sandbox host but never prefixes get-calc-osago with /sandbox', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ result: true, message: 'ok', response: { amount_uzs: 1 } }),
+      });
+      const sandboxService = makeSandboxService();
+
+      await sandboxService.calculatePremium({
+        gos_number: '01A123AA',
+        tech_sery: 'AAA',
+        tech_number: '1234567',
+        period_id: 1,
+        limited: false,
+        owner: {},
+        drivers: [],
+      });
+
+      const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe(
+        'https://online.asia-insurance.uz/apex/ins/osago_v3/get-calc-osago',
+      );
+    });
+
+    it('prefixes /save-policy with /sandbox on the sandbox host', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            result: true,
+            message: 'ok',
+            response: {
+              amount_uzs: 1,
+              comission: 1,
+              order_id: 1,
+              transaction_id: 1,
+              polis_uuid: 'x',
+              transaction_uuid: 'x',
+              payall_url: 'x',
+            },
+          }),
+      });
+      const sandboxService = makeSandboxService();
+
+      await sandboxService.savePolicy({
+        details: {
+          transaction_id: 1,
+          start_date: '2025-01-01',
+          period_id: 1,
+          limited: false,
+          phone_number: '998881234567',
+          amount_uzs: 1,
+        },
+        techPassport: { govNumber: '01A123AA', tech_sery: 'AAA', tech_number: '1234567' },
+        drivers: [],
+        owner: {},
+        applicant: { birth_date: '2000-01-01', pass_seria: 'AB', pass_number: '1234567' },
+      });
+
+      const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe(
+        'https://online.asia-insurance.uz/apex/ins/osago_v3/sandbox/save-policy',
+      );
+    });
+
+    it('does not prefix /get-period or /get-relative — confirmed shared with production', async () => {
+      fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({ items: [] }) });
+      const sandboxService = makeSandboxService();
+
+      await sandboxService.getPeriods();
+      await sandboxService.getRelatives();
+
+      const urls = fetchMock.mock.calls.map((call) => call[0]);
+      expect(urls).toEqual([
+        'https://online.asia-insurance.uz/apex/ins/osago_v3/get-period',
+        'https://online.asia-insurance.uz/apex/ins/osago_v3/get-relative',
+      ]);
+    });
+  });
 });
