@@ -58,9 +58,24 @@ jobs:
           DB_NAME: osago_test
 
       - name: E2E tests
-        # Reads backend/.env.test itself (see test/setup-env.ts) — same
-        # DB_HOST/PORT/USERNAME/NAME as the migration step above.
+        # backend/.env.test is gitignored (never committed, real developer
+        # machines have their own local copy) — dotenv.config() in
+        # test/setup-env.ts silently no-ops when it's missing, so CI must
+        # supply every value it would otherwise read from that file itself.
         run: npm run test:e2e
+        env:
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 5544
+          DB_USERNAME: osago_admin
+          DB_PASSWORD: ''
+          DB_NAME: osago_test
+          JWT_ACCESS_SECRET: test_access_secret
+          JWT_ACCESS_EXPIRES_IN_SECONDS: 900
+          JWT_REFRESH_SECRET: test_refresh_secret
+          JWT_REFRESH_EXPIRES_IN_SECONDS: 604800
+          FRONTEND_URL: http://localhost:3000
+          PAYMENT_GATEWAY_PROVIDER: mock
 
   frontend:
     runs-on: ubuntu-latest
