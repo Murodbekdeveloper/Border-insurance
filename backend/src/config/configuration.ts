@@ -100,12 +100,14 @@ export default () => ({
     // (2026-08-18) — structurally different from apiUrl above, not just a
     // different hostname, so AsiaInsuranceClientService routes per-call
     // rather than swapping this in for apiUrl wholesale.
-    // UNRESOLVED as of 2026-08-18: this host rejects the production
-    // INSURANCE_PARTNER_LOGIN/PASSWORD with 401 on every route we could
-    // reach (get-period, get-relative, sandbox/save-policy all 401;
-    // get-calc-osago's route resolves but errors on our test payload) —
-    // ask Asia Insurance whether the sandbox needs separate credentials
-    // before relying on sandbox mode for anything.
+    // RESOLVED 2026-08-20: the production INSURANCE_PARTNER_LOGIN/PASSWORD
+    // (BORDERINSURE) now authenticates fine against every route here
+    // (get-period, get-relative, get-calc-osago, sandbox/save-policy all
+    // 200) — no separate sandbox credentials needed. get-calc-osago and
+    // sandbox/save-policy still return their own business-logic errors
+    // (err_code 16, "vehicle/TS data not found from external source") for
+    // synthetic plate/passport numbers that don't exist in the real
+    // registry — that's expected, not an auth problem.
     sandboxApiUrl:
       process.env.INSURANCE_PARTNER_SANDBOX_API_URL ??
       'https://online.asia-insurance.uz/apex/ins/osago_v3',
