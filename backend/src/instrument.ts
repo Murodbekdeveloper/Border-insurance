@@ -11,7 +11,7 @@ const dsn = process.env.SENTRY_DSN;
 
 // No-op everywhere until a real DSN is configured (see .env.example) —
 // same "disabled until configured" pattern as the other optional
-// integrations (SMTP, Eskiz, Vision) in config/configuration.ts.
+// integrations (SMTP, Vision) in config/configuration.ts.
 if (dsn) {
   Sentry.init({
     dsn,

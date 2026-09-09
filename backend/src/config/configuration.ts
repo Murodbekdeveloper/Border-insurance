@@ -131,6 +131,20 @@ export default () => ({
     callbackToken:
       process.env.INSURANCE_PARTNER_CALLBACK_TOKEN ?? 'dev_callback_token',
   },
+  // Asia Insurance's "Apex_Box" OSAGO API — the universal issuer (Uzbek AND
+  // foreign citizens/vehicles), confirmed by Asia Insurance (2026-09-05) as
+  // a *separate* system from insurancePartner.* above (osago_v3, Uzbek-only).
+  // Separate credentials from insurancePartner.login/password — Asia
+  // Insurance said not to reuse those. Not yet issued; all three env vars
+  // are empty until they send them.
+  apexBox: {
+    apiUrl:
+      process.env.APEX_BOX_API_URL ??
+      'https://online.asia-insurance.uz/apex/ins',
+    login: process.env.APEX_BOX_LOGIN ?? '',
+    password: process.env.APEX_BOX_PASSWORD ?? '',
+    userId: process.env.APEX_BOX_USER_ID ?? '',
+  },
   gemini: {
     // Google AI Studio API key — Gemini reads tech-passport/driving-license
     // photos uploaded from the web/mobile app and returns the relevant
@@ -139,14 +153,6 @@ export default () => ({
     // DocumentsService then throws OCR_NOT_CONFIGURED instead of guessing
     // at fields, the same pattern as the other integrations below.
     apiKey: process.env.GEMINI_API_KEY ?? '',
-  },
-  sms: {
-    // Eskiz.uz — the SMS gateway most Uzbek fintech/insurance apps use.
-    // https://documenter.getpostman.com/view/663428/eskiz/2xzY6oM
-    // Left empty by default — SmsService falls back to logging the SMS.
-    eskizEmail: process.env.ESKIZ_EMAIL ?? '',
-    eskizPassword: process.env.ESKIZ_PASSWORD ?? '',
-    eskizBaseUrl: process.env.ESKIZ_BASE_URL ?? 'https://notify.eskiz.uz/api',
   },
   adminJwt: {
     // Deliberately separate secrets from the customer jwt.* config above —

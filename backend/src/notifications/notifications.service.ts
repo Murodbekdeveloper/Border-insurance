@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EmailService } from './email.service';
-import { SmsService } from './sms.service';
 import { renderEmailLayout } from './email-template';
 import { InsurancePolicy } from '../policies/entities/insurance-policy.entity';
 import { User } from '../users/entities/user.entity';
@@ -14,10 +13,7 @@ function formatDate(date: Date | null): string {
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(
-    private readonly emailService: EmailService,
-    private readonly smsService: SmsService,
-  ) {}
+  constructor(private readonly emailService: EmailService) {}
 
   async notifyPolicyConfirmed(
     policy: InsurancePolicy,
@@ -33,9 +29,8 @@ export class NotificationsService {
       </div>
       <p style="margin:16px 0 0;">Bizni tanlaganingiz uchun rahmat!</p>
     `);
-    const sms = `OSAGO: ${policy.policyNumber} raqamli polisingiz tasdiqlandi. Muddati: ${formatDate(policy.validTo)}gacha.`;
 
-    await this.dispatch(user, subject, html, sms);
+    await this.dispatch(user, subject, html);
   }
 
   async notifyPolicyExpiring(
@@ -51,16 +46,14 @@ export class NotificationsService {
       </div>
       <p style="margin:0;">Uzluksiz himoyalanish uchun yangi polis rasmiylashtirishni unutmang.</p>
     `);
-    const sms = `OSAGO: ${policy.policyNumber} polisingiz ${daysLeft} kundan so'ng tugaydi. Yangilashni unutmang.`;
 
-    await this.dispatch(user, subject, html, sms);
+    await this.dispatch(user, subject, html);
   }
 
   private async dispatch(
     user: User,
     subject: string,
     html: string,
-    sms: string,
   ): Promise<void> {
     try {
       await this.emailService.send({ to: user.email, subject, html });
@@ -68,16 +61,6 @@ export class NotificationsService {
       this.logger.warn(
         `Email notification failed for ${user.email}: ${(err as Error).message}`,
       );
-    }
-
-    if (user.phone) {
-      try {
-        await this.smsService.send(user.phone, sms);
-      } catch (err) {
-        this.logger.warn(
-          `SMS notification failed for ${user.phone}: ${(err as Error).message}`,
-        );
-      }
     }
   }
 }

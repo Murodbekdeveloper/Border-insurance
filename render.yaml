@@ -122,10 +122,6 @@ services:
         sync: false
       - key: SMTP_FROM
         value: 'OSAGO Online <no-reply@osago.local>'
-      - key: ESKIZ_EMAIL
-        sync: false
-      - key: ESKIZ_PASSWORD
-        sync: false
 
       # Document OCR/extraction (Gemini) — stays disabled (manual-entry
       # only) until set.

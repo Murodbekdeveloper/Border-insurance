@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import { timingSafeEqualStrings } from '../../common/timing-safe-equal';
 
 // Static bearer-token check for the regulator/partner calling *into* us
 // (PartnerTransactionsController) — unlike every other guard in this app,
@@ -29,7 +30,7 @@ export class PartnerApiKeyGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const header = request.headers.authorization ?? '';
     const [scheme, token] = header.split(' ');
-    if (scheme !== 'Bearer' || token !== expectedToken) {
+    if (scheme !== 'Bearer' || !timingSafeEqualStrings(token, expectedToken)) {
       throw new UnauthorizedException("Noto'g'ri yoki yo'q token");
     }
     return true;

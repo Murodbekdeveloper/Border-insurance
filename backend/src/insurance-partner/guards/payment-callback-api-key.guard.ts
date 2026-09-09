@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import { timingSafeEqualStrings } from '../../common/timing-safe-equal';
 
 // Same static-bearer-token pattern as PartnerApiKeyGuard, but for a
 // different caller (Asia Insurance's payall_url payment-completion
@@ -28,7 +29,7 @@ export class PaymentCallbackApiKeyGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const header = request.headers.authorization ?? '';
     const [scheme, token] = header.split(' ');
-    if (scheme !== 'Bearer' || token !== expectedToken) {
+    if (scheme !== 'Bearer' || !timingSafeEqualStrings(token, expectedToken)) {
       throw new UnauthorizedException("Noto'g'ri yoki yo'q token");
     }
     return true;

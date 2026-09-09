@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PartnerSubmission } from './entities/partner-submission.entity';
 import { InsurancePartnerService } from './insurance-partner.service';
 import { AsiaInsuranceClientService } from './asia-insurance-client.service';
+import { ApexBoxClientService } from './apex-box-client.service';
 import { PartnerTransactionsController } from './partner-transactions.controller';
 import { InsurancePartnerController } from './insurance-partner.controller';
 import { PaymentCallbackController } from './payment-callback.controller';
@@ -14,6 +15,7 @@ import { PaymentCallbackApiKeyGuard } from './guards/payment-callback-api-key.gu
   providers: [
     InsurancePartnerService,
     AsiaInsuranceClientService,
+    ApexBoxClientService,
     PartnerApiKeyGuard,
     PaymentCallbackApiKeyGuard,
   ],
@@ -22,6 +24,10 @@ import { PaymentCallbackApiKeyGuard } from './guards/payment-callback-api-key.gu
     InsurancePartnerController,
     PaymentCallbackController,
   ],
-  exports: [InsurancePartnerService, AsiaInsuranceClientService],
+  exports: [
+    InsurancePartnerService,
+    AsiaInsuranceClientService,
+    ApexBoxClientService,
+  ],
 })
 export class InsurancePartnerModule {}

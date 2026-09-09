@@ -14,6 +14,7 @@ import {
   PolicyStatus,
 } from '../policies/entities/insurance-policy.entity';
 import { User } from '../users/entities/user.entity';
+import { RegistrationCountry } from '../vehicles/entities/vehicle.entity';
 
 export interface PartnerSaveResult {
   transactionUuid: string;
@@ -167,6 +168,17 @@ export class InsurancePartnerService {
   }
 
   private assertReadyForSubmission(policy: InsurancePolicy, user: User): void {
+    // Asia Insurance's /save-policy contract only has fields for an
+    // Uzbek-registered vehicle (gos_number/tech_sery/tech_number) — there's
+    // no confirmed way to submit a genuinely foreign-registered vehicle
+    // (no Uzbek tech passport) yet. Reject explicitly here, naming the
+    // vehicle field, rather than forwarding placeholder/garbage data to
+    // Asia Insurance and surfacing whatever cryptic error they'd return.
+    if (policy.vehicle.registrationCountry === RegistrationCountry.FOREIGN) {
+      throw new BadRequestException(
+        "Ro'yxatga olingan davlat: xorijda ro'yxatdan o'tgan transport vositalari uchun sug'urta arizasini hali yubora olmaymiz — Asia Insurance bilan bu funksiya ustida ishlanmoqda",
+      );
+    }
     const missing: string[] = [];
     if (!user.passportSeries || !user.passportNumber || !user.birthDate) {
       missing.push(

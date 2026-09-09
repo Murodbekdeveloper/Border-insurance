@@ -65,6 +65,10 @@ export class PoliciesService {
     const conflicting = await this.policiesRepository.findOne({
       where: [
         { vehicleId: vehicle.id, status: PolicyStatus.PENDING_PAYMENT },
+        {
+          vehicleId: vehicle.id,
+          status: PolicyStatus.AWAITING_PARTNER_PAYMENT,
+        },
         { vehicleId: vehicle.id, status: PolicyStatus.PAID },
       ],
     });
@@ -75,9 +79,9 @@ export class PoliciesService {
         conflicting.validTo < new Date();
       if (!isExpired) {
         throw new ConflictException(
-          conflicting.status === PolicyStatus.PENDING_PAYMENT
-            ? "Bu transport vositasi uchun to'lov kutilayotgan ariza allaqachon mavjud"
-            : 'Bu transport vositasi uchun faol OSAGO polisi allaqachon mavjud',
+          conflicting.status === PolicyStatus.PAID
+            ? 'Bu transport vositasi uchun faol OSAGO polisi allaqachon mavjud'
+            : "Bu transport vositasi uchun to'lov kutilayotgan ariza allaqachon mavjud",
         );
       }
     }
@@ -268,6 +272,16 @@ export class PoliciesService {
 
   async generatePdf(id: string, userId: string): Promise<Buffer> {
     const policy = await this.findByIdForUser(id, userId);
+    // Only a real, confirmed-issued policy (Asia Insurance/payment finished,
+    // policyNumber/validFrom/validTo populated by finalizeAfterPartnerPayment)
+    // may produce an official-looking document — otherwise an unpaid
+    // applicant could print what looks like a valid OSAGO policy at a
+    // border checkpoint before any real issuance happened.
+    if (policy.status !== PolicyStatus.PAID) {
+      throw new ConflictException(
+        "Polis hujjati faqat to'lov va rasmiylashtirish yakunlangandan keyin mavjud bo'ladi",
+      );
+    }
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new NotFoundException('Foydalanuvchi topilmadi');
@@ -351,6 +365,27 @@ export class PoliciesService {
       .where('policy.status = :status', { status: PolicyStatus.PAID })
       .getRawOne<{ total: string }>();
     return Number(result?.total ?? 0);
+  }
+
+  // Cancels DRAFT/PENDING_PAYMENT policies abandoned for longer than
+  // `olderThanHours` — otherwise create()'s one-active-policy-per-vehicle
+  // lock permanently blocks a user from re-applying for a vehicle they
+  // never finished/paid for. Safe to auto-cancel: neither status has been
+  // submitted to Asia Insurance or charged any money yet (that only
+  // happens from AWAITING_PARTNER_PAYMENT onward, deliberately excluded
+  // here — see PartnerPolicySyncCron for that in-flight case instead).
+  async cancelStaleDrafts(olderThanHours: number): Promise<number> {
+    const staleBefore = new Date(Date.now() - olderThanHours * 3_600_000);
+    const result = await this.policiesRepository
+      .createQueryBuilder()
+      .update(InsurancePolicy)
+      .set({ status: PolicyStatus.CANCELLED })
+      .where('status IN (:...statuses)', {
+        statuses: [PolicyStatus.DRAFT, PolicyStatus.PENDING_PAYMENT],
+      })
+      .andWhere('"createdAt" < :staleBefore', { staleBefore })
+      .execute();
+    return result.affected ?? 0;
   }
 
   // Admin-initiated cancellation — bypasses the ownership check

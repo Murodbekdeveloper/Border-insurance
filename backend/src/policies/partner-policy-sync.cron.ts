@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import * as Sentry from '@sentry/nestjs';
 import { PoliciesService } from './policies.service';
 import { InsurancePartnerService } from '../insurance-partner/insurance-partner.service';
 
@@ -11,6 +12,12 @@ import { InsurancePartnerService } from '../insurance-partner/insurance-partner.
 // payment" and "customer sees PAID" is a non-issue since payallUrl is an
 // external redirect the customer may not even return from immediately.
 const STALE_AWAITING_PARTNER_MS = 15 * 60_000;
+
+// If a submission is still stuck after this much longer, the customer has
+// already been charged/redirected to pay but neither the webhook nor
+// polling has resolved it — that's worth a human's attention, not just an
+// indefinite silent retry loop.
+const NEEDS_ATTENTION_MS = 6 * 60 * 60_000;
 
 @Injectable()
 export class PartnerPolicySyncCron {
@@ -43,6 +50,18 @@ export class PartnerPolicySyncCron {
           `reconcileFromPartner failed for submission ${submission.id}: ${
             err instanceof Error ? err.message : err
           }`,
+        );
+      }
+      if (Date.now() - submission.createdAt.getTime() > NEEDS_ATTENTION_MS) {
+        Sentry.captureMessage(
+          'PartnerSubmission stuck awaiting Asia Insurance payment result for over 6 hours',
+          {
+            level: 'warning',
+            extra: {
+              submissionId: submission.id,
+              policyId: submission.policyId,
+            },
+          },
         );
       }
     }

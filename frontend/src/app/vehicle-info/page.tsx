@@ -28,10 +28,12 @@ function VehicleInfoContent() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { vehicle, residentType, setVehicle } = useApplicationStore();
-  // CITIES ro'yxati faqat O'zbekiston shaharlari/viloyatlarini o'z ichiga oladi —
-  // chet el fuqarosi shu ro'yxatdagi biror shahardan bo'lishi shart emas, shuning
-  // uchun norezidentlar uchun bu maydonni erkin matn sifatida kiritish imkonini beramiz.
-  const isForeign = residentType === 'non_resident';
+
+  useEffect(() => {
+    if (!residentType) {
+      router.replace('/resident-type');
+    }
+  }, [residentType, router]);
 
   const {
     register,
@@ -53,11 +55,21 @@ function VehicleInfoContent() {
 
   const ownerIsApplicant = watch('ownerIsApplicant');
 
-  // Rezident foydalanuvchi uchun: davlat raqami + texpasport seriyasi/raqami
-  // to'liq kiritilgach, qolgan transport ma'lumotlarini (model, yili, kuzov/
-  // dvigatel raqami) Asia Insurance'dan avtomatik tortib olamiz — norezident
-  // (chet el) transport vositalari ularning bazasida bo'lmaydi, shuning
-  // uchun faqat residentlar uchun ishlaydi.
+  // Mashinaning o'zi xorijda ro'yxatdan o'tganmi — shu forma ichidagi
+  // registrationCountry maydonidan olinadi, arizachining shaxsiy rezidentlik
+  // holatidan emas: rezident ham xorijiy mashinada yurishi, norezident ham
+  // O'zbekistonda ro'yxatdan o'tgan mashinada yurishi mumkin — bu ikkisi
+  // mustaqil holatlar. CITIES ro'yxati faqat O'zbekiston shaharlari/
+  // viloyatlarini o'z ichiga oladi, shuning uchun xorijiy mashinalar uchun
+  // "Shahar" maydoni erkin matn sifatida ko'rsatiladi.
+  const registrationCountryValue = watch('registrationCountry');
+  const isForeign = registrationCountryValue === 'Xorij';
+
+  // Davlat raqami + texpasport seriyasi/raqami to'liq kiritilgach, qolgan
+  // transport ma'lumotlarini (model, yili, kuzov/dvigatel raqami) Asia
+  // Insurance'dan avtomatik tortib olamiz — xorijda ro'yxatdan o'tgan
+  // transport vositalari ularning bazasida bo'lmaydi, shuning uchun faqat
+  // UZ'da ro'yxatdan o'tgan mashinalar uchun ishlaydi.
   const plateNumberValue = watch('plateNumber');
   const techPassportSeriesValue = watch('techPassportSeries');
   const techPassportNumberValue = watch('techPassportNumber');

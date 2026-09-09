@@ -35,6 +35,17 @@ function assertProductionSecretsConfigured(configService: ConfigService): void {
         .join(', ')}. Set real values for these via environment variables.`,
     );
   }
+  // SKIP_EMAIL_VERIFICATION_CHECK is a local/manual testing aid (see
+  // auth.service.ts login()) with no legitimate production use — flipping
+  // it on there would silently let anyone log in without ever confirming
+  // their email. Unlike the secrets above there's no "default" value to
+  // compare against (it's a plain boolean), so this is a hard refusal
+  // rather than a default-value check.
+  if (configService.get<boolean>('skipEmailVerificationCheck')) {
+    throw new Error(
+      'Refusing to start in production with SKIP_EMAIL_VERIFICATION_CHECK=true — unset this env var.',
+    );
+  }
 }
 
 async function bootstrap() {

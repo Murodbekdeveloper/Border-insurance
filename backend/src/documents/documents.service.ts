@@ -56,8 +56,8 @@ const COMMON_INSTRUCTION =
  * Structured extraction via the Gemini Interactions API (an AI Studio API
  * key, not a service account — simplest to rotate/scope for a single
  * "read fields off a document photo" use case). Left unconfigured by
- * default, the same pattern as SmsService/EmailService/
- * PaymePaymentGatewayService: throws a stable OCR_NOT_CONFIGURED code the
+ * default, the same pattern as EmailService/PaymePaymentGatewayService:
+ * throws a stable OCR_NOT_CONFIGURED code the
  * mobile/web app already knows how to render as "fill this in manually"
  * instead of a generic error.
  */
@@ -83,12 +83,20 @@ export class DocumentsService {
     }
 
     const outputText = await this.callGemini(files, documentType);
-    // TEMP diagnostic (2026-08-18): tracking down why fullName/birthDate
-    // come back empty on some passport photos — remove once resolved.
-    this.logger.log(
-      `Gemini raw output for ${documentType} (${files.length} file(s)): ${outputText}`,
-    );
-    return { rawText: outputText, fields: this.parseFields(outputText) };
+    const fields = this.parseFields(outputText);
+    // Diagnostic without the actual PII: which known fields Gemini did/didn't
+    // fill in, not the extracted names/passport numbers/birthdates
+    // themselves — those must never sit in plaintext logs (or reach Sentry
+    // via console breadcrumbs).
+    const emptyFields = Object.entries(fields)
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
+    if (emptyFields.length > 0) {
+      this.logger.log(
+        `OCR for ${documentType} (${files.length} file(s)) left ${emptyFields.length} field(s) empty: ${emptyFields.join(', ')}`,
+      );
+    }
+    return { rawText: outputText, fields };
   }
 
   private async callGemini(

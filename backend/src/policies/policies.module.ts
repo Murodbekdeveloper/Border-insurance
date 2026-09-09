@@ -12,6 +12,7 @@ import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { RenewalRemindersCron } from './renewal-reminders.cron';
 import { PartnerPolicySyncCron } from './partner-policy-sync.cron';
+import { StaleDraftCleanupCron } from './stale-draft-cleanup.cron';
 import { InsurancePartnerModule } from '../insurance-partner/insurance-partner.module';
 
 @Module({
@@ -28,6 +29,7 @@ import { InsurancePartnerModule } from '../insurance-partner/insurance-partner.m
     PdfService,
     RenewalRemindersCron,
     PartnerPolicySyncCron,
+    StaleDraftCleanupCron,
   ],
   controllers: [PoliciesController, PolicyVerificationController],
   exports: [PoliciesService, PricingService],

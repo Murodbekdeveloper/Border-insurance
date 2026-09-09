@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Logger, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InsurancePartnerService } from './insurance-partner.service';
 import { PaymentCallbackApiKeyGuard } from './guards/payment-callback-api-key.guard';
@@ -14,6 +14,8 @@ import { PaymentCallbackDto } from './dto/payment-callback.dto';
 @UseGuards(PaymentCallbackApiKeyGuard)
 @Controller('partner/payment-callback')
 export class PaymentCallbackController {
+  private readonly logger = new Logger(PaymentCallbackController.name);
+
   constructor(
     private readonly insurancePartnerService: InsurancePartnerService,
   ) {}
@@ -24,6 +26,17 @@ export class PaymentCallbackController {
       "Asia Insurance'dan to'lov yakunlangani haqida callback (payall_url orqali)",
   })
   async handleCallback(@Body() dto: PaymentCallbackDto) {
+    // Mirror reconcileFromPartner()'s gate (insurance-partner.service.ts) —
+    // a callback isn't proof of a finished, successful payment just because
+    // it arrived on an authenticated channel. Anyone holding
+    // INSURANCE_PARTNER_CALLBACK_TOKEN could otherwise finalize any policy
+    // by posting an arbitrary contract_id with a non-success result.
+    if (dto.result !== 0 || dto.policy_status !== 'ISSUED') {
+      this.logger.warn(
+        `Ignoring non-success payment callback for contract_id ${dto.contract_id}: result=${dto.result}, policy_status=${dto.policy_status}`,
+      );
+      return { received: true };
+    }
     await this.insurancePartnerService.recordPaymentCallback(dto.contract_id, {
       contractNum: dto.contract_num,
       policyNo: dto.policy_no,

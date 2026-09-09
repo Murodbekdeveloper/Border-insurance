@@ -29,3 +29,7 @@ frontend/next-env.d.ts
 
 # mobile app has its own separate git repo — not part of this web deploy
 mobile/
+
+# Real personal documents (passport/tech-passport photos) used for local
+# manual API testing — must never be committed.
+frontend/transactionIdTest/
