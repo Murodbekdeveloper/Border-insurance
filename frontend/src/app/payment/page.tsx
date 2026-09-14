@@ -17,6 +17,7 @@ function PaymentContent() {
   const { policyId, price, setPrice } = useApplicationStore();
   const [loadingPrice, setLoadingPrice] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [paymentLinks, setPaymentLinks] = useState<{ clickLink: string; paymeLink: string } | null>(null);
 
   useEffect(() => {
     if (!policyId) {
@@ -42,14 +43,26 @@ function PaymentContent() {
     if (!policyId || submitting) return;
     setSubmitting(true);
     try {
-      const { payallUrl } = await submitToPartner(policyId);
-      toast.success("Ariza sug'urta kompaniyasiga yuborildi — to'lov sahifasiga o'tilmoqda");
-      // payallUrl is Asia Insurance's own domain — a full page navigation,
-      // not client-side routing, since the customer pays the real OSAGO
-      // premium there directly (see backend InsurancePartnerService).
-      window.location.href = payallUrl;
+      const { payallUrl, clickLink, paymeLink } = await submitToPartner(policyId);
+      if (payallUrl) {
+        toast.success("Ariza sug'urta kompaniyasiga yuborildi — to'lov sahifasiga o'tilmoqda");
+        // payallUrl is Asia Insurance's own domain — a full page navigation,
+        // not client-side routing, since the customer pays the real OSAGO
+        // premium there directly (see backend InsurancePartnerService).
+        window.location.href = payallUrl;
+        return;
+      }
+      if (clickLink && paymeLink) {
+        // Apex_Box (foreign vehicle) — two separate payment providers, the
+        // customer picks one, so we show both instead of auto-redirecting.
+        setPaymentLinks({ clickLink, paymeLink });
+        setSubmitting(false);
+        return;
+      }
+      toast.error("Sug'urta kompaniyasidan to'lov havolasi kelmadi");
+      setSubmitting(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Asia Insurance'ga yuborishda xatolik yuz berdi");
+      toast.error(err instanceof Error ? err.message : "Sug'urta kompaniyasiga yuborishda xatolik yuz berdi");
       setSubmitting(false);
     }
   };
@@ -85,17 +98,41 @@ function PaymentContent() {
             sug&apos;urta kompaniyasi hisobiga to&apos;lanadi.
           </p>
 
-          <Button
-            type="button"
-            variant="primary"
-            fullWidth
-            isLoading={submitting}
-            disabled={loadingPrice || price === null || submitting}
-            onClick={handleSubmitToPartner}
-            className="mt-6"
-          >
-            To&apos;lovga o&apos;tish
-          </Button>
+          {paymentLinks ? (
+            <div className="mt-6 flex flex-col gap-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                To&apos;lov usulini tanlang:
+              </p>
+              <Button
+                type="button"
+                variant="primary"
+                fullWidth
+                onClick={() => { window.location.href = paymentLinks.clickLink; }}
+              >
+                Click orqali to&apos;lash
+              </Button>
+              <Button
+                type="button"
+                variant="success"
+                fullWidth
+                onClick={() => { window.location.href = paymentLinks.paymeLink; }}
+              >
+                Payme orqali to&apos;lash
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="primary"
+              fullWidth
+              isLoading={submitting}
+              disabled={loadingPrice || price === null || submitting}
+              onClick={handleSubmitToPartner}
+              className="mt-6"
+            >
+              To&apos;lovga o&apos;tish
+            </Button>
+          )}
 
           <Button
             type="button"

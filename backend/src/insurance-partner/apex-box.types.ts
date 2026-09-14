@@ -1,7 +1,10 @@
 // Shapes for Asia Insurance's "Apex_Box" OSAGO API — the universal issuer
-// (both Uzbek and foreign citizens/vehicles), confirmed by Asia Insurance
-// (2026-09-05) to live at https://online.asia-insurance.uz/apex/ins/ (NOT
-// rest.aic.uz, an earlier/incorrect copy of this same spec). Field
+// (both Uzbek and foreign citizens/vehicles), confirmed by Asia Insurance to
+// live at https://online.asia-insurance.uz/apex/ins/apex_box/ (NOT
+// rest.aic.uz, an earlier/incorrect copy of this same spec — and NOT the
+// bare .../apex/ins/ path either, missing the /apex_box segment, which is
+// what their own first-shared documentation had and what caused every
+// endpoint to 404 until Asia Insurance corrected it on 2026-09-09). Field
 // names/casing mirror their published spec exactly
 // (swagger.asia-insurance.uz/swagger-files/old_osago.yaml) — this is their
 // contract, not ours.
@@ -124,19 +127,34 @@ export interface ApexBoxVehicle {
 export interface ApexBoxCost {
   discountId: string;
   discountSum?: number;
-  insurancePremium: number;
-  sumInsured: number;
-  // From /osago_references_contractTermConclusionId.
+  // CONFIRMED 2026-09-10 against the live /osago endpoint: despite the
+  // published spec showing these four money fields as `number`, the live
+  // API rejects them with 422 ("must be a string") unless sent as
+  // stringified numbers ("100000", not 100000).
+  insurancePremium: string;
+  sumInsured: string;
+  // From /osago_references_contractTermConclusionId. id "3" = "На срок
+  // временного использования ТС, зарегистрированного в иностранных
+  // государствах" — the foreign-vehicle contract term.
   contractTermConclusionId: string;
-  // From /osago_use_territory.
+  // From /osago_use_territory. id "3" = "Для иностранцев".
   useTerritoryId: string;
-  commission: number;
-  insurancePremiumPaidToInsurer: number;
-  // From /osago_references_seasonal_insurances.
+  commission: string;
+  insurancePremiumPaidToInsurer: string;
+  // From /osago_references_seasonal_insurances. CONFIRMED 2026-09-10:
+  // must be omitted/empty when contractTermConclusionId === '3' (foreign
+  // vehicle) — the API rejects a non-empty value with error_code 8
+  // ("для полиса на иностранное ТС поле seasonalInsuranceId должно быть
+  // пустым"). Only set this for the non-foreign contract terms.
   seasonalInsuranceId: string;
-  // From /osago_references_foreign_vehicles_policy_duration — despite the
-  // name, no confirmed reference values yet; a pricing/category flag, not
-  // a bypass for vehicle.govNumber/techPassport being required.
+  // CONFIRMED 2026-09-10: NOT a foreign-vehicle yes/no flag despite the
+  // name — this is the foreign-vehicle POLICY DURATION selector, sourced
+  // from /osago_references_foreign_vehicles_policy_duration (e.g. "1" =
+  // "до 15 дней"). Only meaningful (and presumably only accepted) when
+  // contractTermConclusionId === '3'; still doesn't bypass
+  // vehicle.govNumber/techPassport being required fields (Asia Insurance
+  // confirmed those just aren't validated against the registry for a
+  // non-resident applicant — residents' vehicle data still is).
   foreignVehicleId: string;
 }
 

@@ -17,6 +17,7 @@ function buildUser(overrides: Partial<User> = {}): User {
     passportSeries: null,
     passportNumber: null,
     birthDate: null,
+    citizenshipId: null,
     isActive: true,
     createdAt: new Date(),
     vehicles: [],

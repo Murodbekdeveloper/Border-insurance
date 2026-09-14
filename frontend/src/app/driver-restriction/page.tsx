@@ -33,7 +33,7 @@ const emptyDriver = {
 function DriverRestrictionContent() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const { vehicleId, residentType, driverRestriction, drivers, setDriverRestriction, setPolicy } = useApplicationStore();
+  const { vehicle, vehicleId, residentType, driverRestriction, drivers, setDriverRestriction, setPolicy } = useApplicationStore();
   // Chet el fuqarosining pasporti O'zbekiston pasporti formatiga (2 harf + 7 raqam)
   // to'g'ri kelmaydi, shuning uchun norezidentlar uchun bu maydonlar erkinroq bo'ladi.
   const isForeign = residentType === 'non_resident';
@@ -123,6 +123,7 @@ function DriverRestrictionContent() {
         vehicleId,
         driverRestriction: data.driverRestriction,
         drivers: finalDrivers,
+        foreignPolicyDurationId: vehicle?.foreignPolicyDurationId,
       });
       setDriverRestriction(data.driverRestriction, finalDrivers);
       setPolicy(policy.id);

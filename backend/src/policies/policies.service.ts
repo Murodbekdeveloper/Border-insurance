@@ -16,9 +16,11 @@ import { CreatePolicyDto } from './dto/create-policy.dto';
 import { PricingService } from './pricing/pricing.service';
 import { PdfService } from './pdf/pdf.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
+import { RegistrationCountry } from '../vehicles/entities/vehicle.entity';
 import { UsersService } from '../users/users.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { InsurancePartnerService } from '../insurance-partner/insurance-partner.service';
+import { ApexBoxService } from '../insurance-partner/apex-box.service';
 
 function generatePolicyNumber(): string {
   const year = new Date().getFullYear();
@@ -51,6 +53,7 @@ export class PoliciesService {
     private readonly usersService: UsersService,
     private readonly notificationsService: NotificationsService,
     private readonly insurancePartnerService: InsurancePartnerService,
+    private readonly apexBoxService: ApexBoxService,
   ) {}
 
   async create(userId: string, dto: CreatePolicyDto): Promise<InsurancePolicy> {
@@ -86,6 +89,15 @@ export class PoliciesService {
       }
     }
 
+    if (
+      vehicle.registrationCountry === RegistrationCountry.FOREIGN &&
+      !dto.foreignPolicyDurationId
+    ) {
+      throw new ForbiddenException(
+        "Chet elda ro'yxatdan o'tgan transport vositasi uchun sug'urta muddatini tanlang",
+      );
+    }
+
     const drivers =
       dto.driverRestriction === DriverRestriction.RESTRICTED ? dto.drivers : [];
 
@@ -106,6 +118,7 @@ export class PoliciesService {
       drivers,
       price: 0,
       status: PolicyStatus.DRAFT,
+      foreignPolicyDurationId: dto.foreignPolicyDurationId ?? null,
     });
     return this.policiesRepository.save(policy);
   }
@@ -138,26 +151,47 @@ export class PoliciesService {
     return price;
   }
 
-  // Registers the priced application with Asia Insurance (/save-policy) and
-  // returns their payallUrl — the customer pays there directly, our own
-  // Payme/Cards flow is not used for OSAGO (see PaymentCallbackController).
-  // `price` is overwritten with their calculator's amount_uzs, which is the
-  // authoritative figure per SavePolicyRequest.details.amount_uzs's spec.
+  // Registers the priced application with the real OSAGO issuer and returns
+  // a link the customer pays at directly — our own Payme/Cards flow is not
+  // used for OSAGO (see PaymentCallbackController). `price` is overwritten
+  // with the partner's own calculated amount, which is authoritative.
+  //
+  // Forks by vehicle.registrationCountry: osago_v3 (Asia Insurance) has no
+  // foreign-vehicle/citizen support at all (confirmed against its
+  // published spec — no such fields exist), so a "Xorij" vehicle goes to
+  // Apex_Box instead, which returns two payment links (Click/Payme) rather
+  // than one payallUrl.
   async submitToPartner(
     id: string,
     userId: string,
-  ): Promise<{ payallUrl: string }> {
+  ): Promise<{ payallUrl?: string; clickLink?: string; paymeLink?: string }> {
     const policy = await this.findByIdForUser(id, userId);
     if (policy.status !== PolicyStatus.PENDING_PAYMENT) {
       throw new ConflictException(
         policy.status === PolicyStatus.AWAITING_PARTNER_PAYMENT
-          ? "Bu ariza allaqachon Asia Insurance'ga yuborilgan — to'lov kutilmoqda"
+          ? "Bu ariza allaqachon sug'urta kompaniyasiga yuborilgan — to'lov kutilmoqda"
           : 'Ariza hali narxlanmagan yoki allaqachon yakunlangan',
       );
     }
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
+
+    if (policy.vehicle.registrationCountry === RegistrationCountry.FOREIGN) {
+      if (!policy.foreignPolicyDurationId) {
+        throw new ConflictException("Sug'urta muddati tanlanmagan");
+      }
+      const { clickLink, paymeLink, amountUzs } =
+        await this.apexBoxService.submitPolicy(
+          policy,
+          user,
+          policy.foreignPolicyDurationId,
+        );
+      policy.status = PolicyStatus.AWAITING_PARTNER_PAYMENT;
+      policy.price = amountUzs;
+      await this.policiesRepository.save(policy);
+      return { clickLink, paymeLink };
     }
 
     const { payallUrl, amountUzs } =

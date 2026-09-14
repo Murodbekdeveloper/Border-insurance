@@ -58,6 +58,12 @@ export class InsurancePolicy {
   @Column({ type: 'int', default: 0 })
   price: number;
 
+  // Only set (and only meaningful) when vehicle.registrationCountry is
+  // "Xorij" — an id from GET /apex-box/foreign-vehicle-durations, needed
+  // by ApexBoxService.submitPolicy() at submission time.
+  @Column({ type: 'varchar', nullable: true })
+  foreignPolicyDurationId: string | null;
+
   @Column({ type: 'enum', enum: PolicyStatus, default: PolicyStatus.DRAFT })
   status: PolicyStatus;
 

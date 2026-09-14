@@ -46,4 +46,12 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsDateString()
   birthDate?: string;
+
+  // Apex_Box's applicant.citizenshipId (GET /apex-box/countries) — only
+  // meaningful for a non-resident applicant applying for a foreign-vehicle
+  // policy, hence optional here too.
+  @ApiPropertyOptional({ example: '1' })
+  @IsOptional()
+  @IsString()
+  citizenshipId?: string;
 }

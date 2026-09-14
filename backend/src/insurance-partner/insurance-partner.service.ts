@@ -132,6 +132,18 @@ export class InsurancePartnerService {
         }),
       ),
     });
+    // FIXED 2026-09-11: `calc.result` was never checked — a business-logic
+    // failure (e.g. err_code 16, "vehicle/passport not found in the real
+    // registry") has no `amount_uzs` in its `response`, so this silently
+    // sent `amount_uzs: undefined` on to /save-policy instead of failing
+    // loudly. This is what made payall_url etc. look "missing" during
+    // testing with synthetic data — Asia Insurance's real response has
+    // always included them; our own code just never surfaced their error.
+    if (!calc.result) {
+      throw new BadRequestException(
+        `Asia Insurance: ${calc.message || "noma'lum xatolik"}`,
+      );
+    }
 
     const saved = await this.asiaInsuranceClient.savePolicy({
       details: {
@@ -151,6 +163,12 @@ export class InsurancePartnerService {
       owner,
       applicant,
     });
+    // Same fix as the calc check above, for the same reason.
+    if (!saved.result) {
+      throw new BadRequestException(
+        `Asia Insurance: ${saved.message || "noma'lum xatolik"}`,
+      );
+    }
 
     await this.recordPartnerResult(submission.ourTransactionId, {
       transactionUuid: saved.response.transaction_uuid,

@@ -61,6 +61,19 @@ export async function updateResidentType(residentType: NonNullable<User['residen
   }
 }
 
+// Only meaningful for a non-resident applicant — an id from
+// GET /apex-box/countries, required to submit a foreign-vehicle policy via
+// Apex_Box. Reuses the general profile endpoint (every field there is
+// optional server-side) rather than a dedicated route.
+export async function updateCitizenship(citizenshipId: string): Promise<User> {
+  try {
+    const { data } = await apiClient.patch<User>('/users/me', { citizenshipId });
+    return data;
+  } catch (err) {
+    throwApiError(err, 'Fuqarolikni saqlashda xatolik yuz berdi');
+  }
+}
+
 // Exchanges a remembered account's refresh token for a fresh session,
 // without touching (or requiring) the currently active session's tokens.
 export async function switchAccount(user: User, refreshToken: string): Promise<AuthResult> {

@@ -50,13 +50,17 @@ export class AsiaInsuranceClientService {
     );
   }
 
-  // Sandbox path unconfirmed with Asia Insurance — assumed /sandbox-
-  // prefixed like save-policy/get-period/get-relative until verified.
+  // CORRECTED 2026-09-10: confirmed empirically against the sandbox host —
+  // /sandbox/get-policy 404s, plain /get-policy 200s (returns a normal
+  // business-logic error for an unrecognized order_id/transaction_id,
+  // proving the route itself exists) — shared with production like
+  // get-calc-osago/get-period/get-relative, NOT /sandbox-prefixed like
+  // save-policy.
   getPolicy(request: GetPolicyRequest): Promise<GetPolicyResponse> {
     return this.post<GetPolicyRequest, GetPolicyResponse>(
       '/get-policy',
       request,
-      { sandboxPrefixed: true },
+      { sandboxPrefixed: false },
     );
   }
 

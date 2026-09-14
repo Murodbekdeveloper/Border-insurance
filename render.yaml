@@ -129,8 +129,14 @@ services:
         sync: false
 
       # Asia Insurance (real OSAGO issuer) — outbound calls fail until set.
+      # CORRECTED 2026-09-11: the bare domain 301s to Asia Insurance's own
+      # login page instead of reaching the API — every outbound call was
+      # 404ing at the Tomcat layer with the old value here. Must include
+      # the /apex/ins/osago_v3 prefix (see configuration.ts's own comment
+      # on insurancePartner.apiUrl for the same fix, applied here too since
+      # this env var overrides that default).
       - key: INSURANCE_PARTNER_API_URL
-        value: https://ais.asia-insurance.uz
+        value: https://ais.asia-insurance.uz/apex/ins/osago_v3
       - key: INSURANCE_PARTNER_LOGIN
         sync: false
       - key: INSURANCE_PARTNER_PASSWORD

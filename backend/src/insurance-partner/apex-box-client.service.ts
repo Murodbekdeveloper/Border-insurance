@@ -25,10 +25,14 @@ import {
  * additionally require a `user_id` query parameter Asia Insurance issues
  * alongside the credentials.
  *
- * NOT YET WIRED into InsurancePartnerService.submitPolicy() — no
- * credentials exist yet (Asia Insurance to provide them), and the
- * business decision of *when* to route a policy here instead of to
- * osago_v3 hasn't been made. This class is ready to call once both land.
+ * Wired into PoliciesService.submitToPartner(), which routes a policy here
+ * instead of to osago_v3 whenever vehicle.registrationCountry is "Xorij"
+ * (see ApexBoxService.submitPolicy()/PartnerPolicySyncCron for the
+ * submission and payment-polling side of that flow). Still blocked on
+ * real APEX_BOX_LOGIN/PASSWORD/USER_ID credentials (Asia Insurance to
+ * provide) and on their unresolved details.startDate/endDate validation
+ * bug — see the NOT YET RESOLVED comment in
+ * ApexBoxService.buildCreatePolicyRequest.
  */
 @Injectable()
 export class ApexBoxClientService {

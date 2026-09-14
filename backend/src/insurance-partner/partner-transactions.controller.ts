@@ -1,27 +1,27 @@
 import {
+  Body,
   Controller,
-  Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
-  Param,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InsurancePartnerService } from './insurance-partner.service';
 import { PartnerApiKeyGuard } from './guards/partner-api-key.guard';
-
-// Column is typed `uuid` in Postgres (PartnerSubmission.transactionId) — a
-// non-UUID path param makes the lookup query itself throw (invalid input
-// syntax for type uuid), which without this check surfaces as an unhandled
-// 500 instead of the 404 a malformed/unknown id should get.
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { GetTransactionDto } from './dto/get-transaction.dto';
 
 // Inbound endpoint for the insurance regulator (NAPP/ЕАИС «ЕРСП», per the
 // 2026-06-02 Положение о страховых агентах №3845, in force 2026-07-01) to
 // reconcile a policy against the transactionId we pass the partner
 // (Asia Insurance) when confirming payment. Response shape — including
 // the "comission" spelling — is fixed by their spec, not a typo here.
+//
+// CORRECTED 2026-09-11: originally built as GET /partner/transactions/:id
+// with transactionId as a path param — the regulator's actual integration
+// calls this as POST with transactionId in the JSON body instead.
 @ApiTags('insurance-partner')
 @ApiBearerAuth()
 @UseGuards(PartnerApiKeyGuard)
@@ -31,18 +31,20 @@ export class PartnerTransactionsController {
     private readonly insurancePartnerService: InsurancePartnerService,
   ) {}
 
-  @Get(':transactionId')
+  @Post()
+  // A lookup, not a resource creation — Nest's default 201 for POST would
+  // be a needlessly odd status for a regulator client that likely checks
+  // for a plain 200.
+  @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({
     summary:
       "Regulyator uchun: transactionId bo'yicha polis uuid/premium/komissiyani qaytarish",
   })
-  async getByTransactionId(@Param('transactionId') transactionId: string) {
-    if (!UUID_REGEX.test(transactionId)) {
-      throw new NotFoundException('Bunday transactionId topilmadi');
-    }
-    const submission =
-      await this.insurancePartnerService.findByTransactionId(transactionId);
+  async getByTransactionId(@Body() dto: GetTransactionDto) {
+    const submission = await this.insurancePartnerService.findByTransactionId(
+      dto.transactionId,
+    );
     if (!submission || !submission.partnerPolicyUuid) {
       throw new NotFoundException('Bunday transactionId topilmadi');
     }

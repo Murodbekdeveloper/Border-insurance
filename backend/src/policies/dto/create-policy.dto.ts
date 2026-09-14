@@ -1,8 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsEnum,
+  IsOptional,
+  IsString,
   IsUUID,
   ValidateIf,
   ValidateNested,
@@ -30,4 +32,15 @@ export class CreatePolicyDto {
   @ValidateNested({ each: true })
   @Type(() => DriverDto)
   drivers: DriverDto[];
+
+  // Only meaningful (and required at submission time, see
+  // PoliciesService.submitToPartner) when the linked vehicle's
+  // registrationCountry is "Xorij" — an id from
+  // GET /apex-box/foreign-vehicle-durations (e.g. "1" = "до 15 дней").
+  // Optional here since it isn't known until the vehicle is already
+  // created and only applies to the foreign case.
+  @ApiPropertyOptional({ example: '1' })
+  @IsOptional()
+  @IsString()
+  foreignPolicyDurationId?: string;
 }

@@ -1,14 +1,17 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ResidentType } from '@/types';
-import { updateResidentType } from '@/lib/api/auth';
+import { updateResidentType, updateCitizenship } from '@/lib/api/auth';
+import { getCountries, ApexBoxReferenceOption } from '@/lib/api/apexBox';
 import { useAuthStore } from '@/store/authStore';
 import { useApplicationStore } from '@/store/applicationStore';
 import { toast } from '@/store/toastStore';
 import { AuthGuard } from '@/components/AuthGuard';
 import { AuthShell } from '@/components/AuthShell';
+import { Select } from '@/components/ui/Select';
+import { Button } from '@/components/ui/Button';
 
 const OPTIONS: Array<{
   type: ResidentType;
@@ -44,8 +47,48 @@ function ResidentTypeContent() {
   const updateUser = useAuthStore((s) => s.updateUser);
   const setResidentType = useApplicationStore((s) => s.setResidentType);
   const [loading, setLoading] = useState<ResidentType | null>(null);
+  const [selectedType, setSelectedType] = useState<ResidentType | null>(null);
+  const [countries, setCountries] = useState<ApexBoxReferenceOption[]>([]);
+  const [countriesLoading, setCountriesLoading] = useState(false);
+  const [countriesError, setCountriesError] = useState(false);
+  const [citizenshipId, setCitizenshipId] = useState('');
+  const [continuing, setContinuing] = useState(false);
+  const busy = loading !== null || continuing;
 
-  const handleSelect = async (type: ResidentType) => {
+  // Effekt faqat "No-resident" birinchi marta tanlanganda ishga tushishi
+  // uchun (keyingi qayta urinishlar tugma orqali, quyida), tarmoq holatini
+  // bevosita boshqaramiz — countries.length'ga bog'liq bo'lish muvaffaqiyatsiz
+  // urinishdan keyin (ro'yxat hamon bo'sh) qayta urinishni trigger qila
+  // olmasdi.
+  const countriesLoadingRef = useRef(false);
+  const loadCountries = useCallback(() => {
+    if (countriesLoadingRef.current) return;
+    countriesLoadingRef.current = true;
+    setCountriesLoading(true);
+    setCountriesError(false);
+    getCountries()
+      .then(setCountries)
+      .catch(() => {
+        setCountriesError(true);
+        toast.error("Davlatlar ro'yxatini olishda xatolik yuz berdi");
+      })
+      .finally(() => {
+        countriesLoadingRef.current = false;
+        setCountriesLoading(false);
+      });
+  }, []);
+
+  // Chet ellik uchun mashinasi xorijda ro'yxatdan o'tgan bo'lsa, ariza
+  // Apex_Box orqali yuboriladi — bu esa arizachining fuqaroligini talab
+  // qiladi (GET /apex-box/countries). Faqat "No-resident" tanlanganda kerak.
+  // Xato bo'lsa, foydalanuvchi pastdagi "Qayta urinish" tugmasi orqali
+  // qolib ketmasdan qayta urinishi mumkin (loadCountries).
+  useEffect(() => {
+    if (selectedType !== 'non_resident' || countries.length > 0) return;
+    loadCountries();
+  }, [selectedType, countries.length, loadCountries]);
+
+  const proceed = async (type: ResidentType) => {
     if (!user) return;
     setLoading(type);
     try {
@@ -60,6 +103,37 @@ function ResidentTypeContent() {
     }
   };
 
+  const handleSelect = (type: ResidentType) => {
+    if (busy) return;
+    if (type === 'non_resident') {
+      setSelectedType(type);
+      return;
+    }
+    // Foydalanuvchi avval "No-resident"ni tanlab, fikridan qaytib
+    // "Resident"ni bosishi mumkin — shu holatda fuqarolik paneli va uning
+    // eski tanlovi (citizenshipId) ko'rinmasligi va keyingi safar
+    // "No-resident" qayta tanlanganda eski holat sizib chiqmasligi kerak.
+    setSelectedType(type);
+    setCitizenshipId('');
+    void proceed(type);
+  };
+
+  const handleContinueAsForeigner = async () => {
+    if (!citizenshipId) {
+      toast.error('Fuqarolikni tanlang');
+      return;
+    }
+    setContinuing(true);
+    try {
+      await updateCitizenship(citizenshipId);
+      await proceed('non_resident');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Fuqarolikni saqlashda xatolik yuz berdi');
+    } finally {
+      setContinuing(false);
+    }
+  };
+
   return (
     <AuthShell title="Kim sifatida murojaat qilyapsiz?" subtitle="Rezident turini tanlang" wide showExitToMenu>
       <div className="grid grid-cols-2 gap-5">
@@ -67,9 +141,11 @@ function ResidentTypeContent() {
           <button
             key={option.type}
             type="button"
-            disabled={loading !== null}
+            disabled={busy}
             onClick={() => handleSelect(option.type)}
-            className="group relative flex flex-col items-start gap-4 rounded-2xl border border-slate-200 bg-white p-6 text-left transition-all hover:-translate-y-0.5 hover:border-green-500 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900"
+            className={`group relative flex flex-col items-start gap-4 rounded-2xl border bg-white p-6 text-left transition-all hover:-translate-y-0.5 hover:border-green-500 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-900 ${
+              selectedType === option.type ? 'border-green-500' : 'border-slate-200 dark:border-slate-800'
+            }`}
           >
             <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 text-green-700 transition-colors group-hover:bg-green-600 group-hover:text-white dark:bg-green-950/40 dark:text-green-400">
               {option.icon}
@@ -84,6 +160,39 @@ function ResidentTypeContent() {
           </button>
         ))}
       </div>
+
+      {selectedType === 'non_resident' && (
+        <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-slate-200 p-6 dark:border-slate-800">
+          {countriesError && countries.length === 0 ? (
+            <div className="flex flex-col items-start gap-2">
+              <p className="text-sm text-red-600">
+                Davlatlar ro&apos;yxatini olishda xatolik yuz berdi. Internet aloqasini tekshirib, qayta urinib ko&apos;ring.
+              </p>
+              <Button type="button" variant="outline" isLoading={countriesLoading} onClick={loadCountries}>
+                Qayta urinish
+              </Button>
+            </div>
+          ) : (
+            <Select
+              label="Fuqaroligingiz"
+              options={countries.map((c) => ({ value: String(c.id), label: c.name }))}
+              placeholder={countriesLoading ? 'Yuklanmoqda...' : 'Davlatni tanlang'}
+              disabled={countriesLoading}
+              value={citizenshipId}
+              onChange={(e) => setCitizenshipId(e.target.value)}
+            />
+          )}
+          <Button
+            type="button"
+            variant="primary"
+            isLoading={continuing}
+            disabled={!citizenshipId || countriesLoading}
+            onClick={handleContinueAsForeigner}
+          >
+            Davom etish
+          </Button>
+        </div>
+      )}
     </AuthShell>
   );
 }

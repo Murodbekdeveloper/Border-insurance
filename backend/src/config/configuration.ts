@@ -138,9 +138,13 @@ export default () => ({
   // Insurance said not to reuse those. Not yet issued; all three env vars
   // are empty until they send them.
   apexBox: {
+    // CORRECTED 2026-09-09: the base URL is missing an /apex_box segment —
+    // confirmed by Asia Insurance after every reference/calc endpoint
+    // 404'd against the bare /apex/ins/ path (their own earlier-shared
+    // documentation dropped this segment too, hence the mixup).
     apiUrl:
       process.env.APEX_BOX_API_URL ??
-      'https://online.asia-insurance.uz/apex/ins',
+      'https://online.asia-insurance.uz/apex/ins/apex_box',
     login: process.env.APEX_BOX_LOGIN ?? '',
     password: process.env.APEX_BOX_PASSWORD ?? '',
     userId: process.env.APEX_BOX_USER_ID ?? '',

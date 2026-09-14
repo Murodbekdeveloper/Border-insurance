@@ -6,7 +6,14 @@ import { getErrorMessage } from '@/lib/api/errors';
 
 export async function createVehicle(data: VehicleFormData): Promise<Vehicle> {
   try {
-    const { data: vehicle } = await apiClient.post<Vehicle>('/vehicles', data);
+    // foreignPolicyDurationId belongs to the policy (see CreatePolicyDto in
+    // policies.ts), not the vehicle — the backend's CreateVehicleDto has no
+    // such field and the global ValidationPipe rejects unknown properties
+    // with a 400, so it must not be forwarded here even though it lives on
+    // the same form/store object for convenience.
+    const payload = { ...data };
+    delete payload.foreignPolicyDurationId;
+    const { data: vehicle } = await apiClient.post<Vehicle>('/vehicles', payload);
     return vehicle;
   } catch (err) {
     throw new Error(getErrorMessage(err, 'Transport ma\'lumotlarini saqlashda xatolik yuz berdi'));

@@ -56,6 +56,13 @@ export class User {
   @Column({ type: 'date', nullable: true })
   birthDate: string | null;
 
+  // Apex_Box's applicant.citizenshipId (from GET /countries) — only
+  // meaningful for a non-resident applicant; required to submit a foreign
+  // citizen's policy through Apex_Box. Stored as a string since Asia
+  // Insurance's own reference ids are strings throughout that API.
+  @Column({ type: 'varchar', nullable: true })
+  citizenshipId: string | null;
+
   // Set to false by an admin to block the account — checked at login and
   // on every authenticated request (see JwtStrategy), so blocking takes
   // effect immediately rather than only on the next login.

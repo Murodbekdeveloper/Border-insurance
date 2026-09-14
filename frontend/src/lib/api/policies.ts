@@ -7,6 +7,9 @@ interface CreatePolicyInput {
   vehicleId: string;
   driverRestriction: DriverRestriction;
   drivers: DriverFormData[];
+  // Only for a vehicle with registrationCountry "Xorij" — see
+  // GET /apex-box/foreign-vehicle-durations.
+  foreignPolicyDurationId?: string;
 }
 
 export async function createPolicy(input: CreatePolicyInput): Promise<InsurancePolicy> {
@@ -27,14 +30,33 @@ export async function getPrice(policyId: string): Promise<number> {
   }
 }
 
-export async function submitToPartner(policyId: string): Promise<{ payallUrl: string }> {
+interface SubmitToPartnerResult {
+  // osago_v3 (domestic) — a single redirect to the partner's own payment page.
+  payallUrl?: string;
+  // Apex_Box (foreign vehicle) — two separate payment-provider links; the
+  // customer picks one.
+  clickLink?: string;
+  paymeLink?: string;
+}
+
+const SUBMIT_TO_PARTNER_FALLBACK = "Sug'urta kompaniyasiga yuborishda xatolik yuz berdi";
+
+export async function submitToPartner(policyId: string): Promise<SubmitToPartnerResult> {
   try {
-    const { data } = await apiClient.post<{ payallUrl: string }>(
+    const { data } = await apiClient.post<SubmitToPartnerResult>(
       `/policies/${policyId}/submit-to-partner`,
     );
     return data;
   } catch (err) {
-    throw new Error(getErrorMessage(err, "Asia Insurance'ga yuborishda xatolik yuz berdi"));
+    const message = getErrorMessage(err, SUBMIT_TO_PARTNER_FALLBACK);
+    // The partner integrations sometimes surface their own raw, non-localized
+    // text through this endpoint — Apex_Box echoes its own error verbatim
+    // (prefixed "Apex_Box:", e.g. a known date-validation quirk on their
+    // side), and an unhandled partner-client error reaches the customer as
+    // the generic Nest "Internal server error". Neither is something a
+    // customer should see, so fall back to a clean Uzbek message instead.
+    const isTechnical = message.startsWith('Apex_Box:') || message === 'Internal server error';
+    throw new Error(isTechnical ? SUBMIT_TO_PARTNER_FALLBACK : message);
   }
 }
 

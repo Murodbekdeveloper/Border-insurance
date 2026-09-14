@@ -33,3 +33,6 @@ mobile/
 # Real personal documents (passport/tech-passport photos) used for local
 # manual API testing — must never be committed.
 frontend/transactionIdTest/
+
+# Personal Claude Code permission overrides — not shared with the team.
+.claude/settings.local.json

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +10,8 @@ import { getVehicleDefaultsForModel, getWeightCategoryForVehicleType } from '@/l
 import { maskAlnumUpper, maskDigits, maskPhoneUZ, maskPlateNumber, maskYear } from '@/lib/masks';
 import { createVehicle, lookupVehicle } from '@/lib/api/vehicles';
 import { extractVehicleDocument, OcrNotConfiguredError } from '@/lib/api/ocr';
+import { getCountries, getForeignVehicleDurations, ApexBoxReferenceOption } from '@/lib/api/apexBox';
+import { updateCitizenship } from '@/lib/api/auth';
 import { useAuthStore } from '@/store/authStore';
 import { useApplicationStore } from '@/store/applicationStore';
 import { toast } from '@/store/toastStore';
@@ -27,6 +29,7 @@ const cityOptions = CITIES.map((c) => ({ value: c, label: c }));
 function VehicleInfoContent() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const updateUser = useAuthStore((s) => s.updateUser);
   const { vehicle, residentType, setVehicle } = useApplicationStore();
 
   useEffect(() => {
@@ -64,6 +67,73 @@ function VehicleInfoContent() {
   // "Shahar" maydoni erkin matn sifatida ko'rsatiladi.
   const registrationCountryValue = watch('registrationCountry');
   const isForeign = registrationCountryValue === 'Xorij';
+
+  const [foreignDurations, setForeignDurations] = useState<ApexBoxReferenceOption[]>([]);
+  const [foreignDurationsLoading, setForeignDurationsLoading] = useState(false);
+  const [foreignDurationsError, setForeignDurationsError] = useState(false);
+  const foreignDurationsLoadingRef = useRef(false);
+  const loadForeignDurations = useCallback(() => {
+    if (foreignDurationsLoadingRef.current) return;
+    foreignDurationsLoadingRef.current = true;
+    setForeignDurationsLoading(true);
+    setForeignDurationsError(false);
+    getForeignVehicleDurations()
+      .then(setForeignDurations)
+      .catch(() => {
+        setForeignDurationsError(true);
+        toast.error("Sug'urta muddatlari ro'yxatini olishda xatolik yuz berdi");
+      })
+      .finally(() => {
+        foreignDurationsLoadingRef.current = false;
+        setForeignDurationsLoading(false);
+      });
+  }, []);
+  useEffect(() => {
+    if (!isForeign || foreignDurations.length > 0) return;
+    loadForeignDurations();
+  }, [isForeign, foreignDurations.length, loadForeignDurations]);
+
+  // registrationCountry "Xorij"dan qaytarilganda tanlangan muddat endi
+  // ma'noga ega emas — tozalamasak, keyinroq (driver-restriction orqali)
+  // O'zbekistonda ro'yxatdan o'tgan mashina uchun eski foreignPolicyDurationId
+  // qiymati polisga biriktirilib qolishi mumkin edi.
+  useEffect(() => {
+    if (isForeign) return;
+    setValue('foreignPolicyDurationId', undefined, { shouldValidate: true });
+  }, [isForeign, setValue]);
+
+  // Apex_Box orqali yuboriladigan har qanday xorijiy transport (rezident
+  // bo'lsa ham — bu maydon residentType'dan mustaqil, yuqoridagi izohga
+  // qarang) arizachining fuqaroligini talab qiladi. Norezidentlar buni
+  // odatda /resident-type sahifasida allaqachon tanlagan bo'ladi, lekin
+  // xorijiy mashinaga ega rezidentlar uchun bu yagona joy — shuning uchun
+  // profilida hali yo'q bo'lsa, shu yerda so'raymiz.
+  const needsCitizenship = isForeign && !user?.citizenshipId;
+  const [citizenshipId, setCitizenshipId] = useState('');
+  const [countries, setCountries] = useState<ApexBoxReferenceOption[]>([]);
+  const [countriesLoading, setCountriesLoading] = useState(false);
+  const [countriesError, setCountriesError] = useState(false);
+  const countriesLoadingRef = useRef(false);
+  const loadCountries = useCallback(() => {
+    if (countriesLoadingRef.current) return;
+    countriesLoadingRef.current = true;
+    setCountriesLoading(true);
+    setCountriesError(false);
+    getCountries()
+      .then(setCountries)
+      .catch(() => {
+        setCountriesError(true);
+        toast.error("Davlatlar ro'yxatini olishda xatolik yuz berdi");
+      })
+      .finally(() => {
+        countriesLoadingRef.current = false;
+        setCountriesLoading(false);
+      });
+  }, []);
+  useEffect(() => {
+    if (!needsCitizenship || countries.length > 0) return;
+    loadCountries();
+  }, [needsCitizenship, countries.length, loadCountries]);
 
   // Davlat raqami + texpasport seriyasi/raqami to'liq kiritilgach, qolgan
   // transport ma'lumotlarini (model, yili, kuzov/dvigatel raqami) Asia
@@ -114,7 +184,15 @@ function VehicleInfoContent() {
 
   const onSubmit = async (data: VehicleFormData) => {
     if (!user) return;
+    if (needsCitizenship && !citizenshipId) {
+      toast.error('Fuqarolikni tanlang');
+      return;
+    }
     try {
+      if (needsCitizenship) {
+        const updatedUser = await updateCitizenship(citizenshipId);
+        updateUser(updatedUser);
+      }
       const created = await createVehicle(data);
       setVehicle(data, created.id);
       router.push('/driver-restriction');
@@ -323,6 +401,50 @@ function VehicleInfoContent() {
           )}
         </div>
 
+        {isForeign && (
+          foreignDurationsError && foreignDurations.length === 0 ? (
+            <div className="flex flex-col items-start gap-2 rounded-xl border border-red-200 p-4 dark:border-red-900/40">
+              <p className="text-sm text-red-600">
+                Sug&apos;urta muddatlari ro&apos;yxatini olishda xatolik yuz berdi. Internet aloqasini tekshirib, qayta urinib ko&apos;ring.
+              </p>
+              <Button type="button" variant="outline" isLoading={foreignDurationsLoading} onClick={loadForeignDurations}>
+                Qayta urinish
+              </Button>
+            </div>
+          ) : (
+            <Select
+              label="Sug'urta muddati"
+              options={foreignDurations.map((d) => ({ value: String(d.id), label: d.name }))}
+              placeholder={foreignDurationsLoading ? 'Yuklanmoqda...' : 'Muddatni tanlang'}
+              disabled={foreignDurationsLoading}
+              error={errors.foreignPolicyDurationId?.message}
+              {...register('foreignPolicyDurationId')}
+            />
+          )
+        )}
+
+        {needsCitizenship && (
+          countriesError && countries.length === 0 ? (
+            <div className="flex flex-col items-start gap-2 rounded-xl border border-red-200 p-4 dark:border-red-900/40">
+              <p className="text-sm text-red-600">
+                Davlatlar ro&apos;yxatini olishda xatolik yuz berdi. Internet aloqasini tekshirib, qayta urinib ko&apos;ring.
+              </p>
+              <Button type="button" variant="outline" isLoading={countriesLoading} onClick={loadCountries}>
+                Qayta urinish
+              </Button>
+            </div>
+          ) : (
+            <Select
+              label="Fuqaroligingiz"
+              options={countries.map((c) => ({ value: String(c.id), label: c.name }))}
+              placeholder={countriesLoading ? 'Yuklanmoqda...' : 'Davlatni tanlang'}
+              disabled={countriesLoading}
+              value={citizenshipId}
+              onChange={(e) => setCitizenshipId(e.target.value)}
+            />
+          )
+        )}
+
         <Input
           label="Telefon raqami"
           placeholder="+998901234567"
@@ -383,7 +505,13 @@ function VehicleInfoContent() {
           <Button type="button" variant="outline" onClick={() => router.push('/resident-type')}>
             Orqaga
           </Button>
-          <Button type="submit" variant="primary" isLoading={isSubmitting} disabled={!isValid} className="px-10">
+          <Button
+            type="submit"
+            variant="primary"
+            isLoading={isSubmitting}
+            disabled={!isValid || (needsCitizenship && !citizenshipId)}
+            className="px-10"
+          >
             Keyingisi
           </Button>
         </div>

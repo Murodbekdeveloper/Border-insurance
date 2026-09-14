@@ -73,7 +73,13 @@ export const vehicleSchema = z.object({
   ownerPassportSeries: z.string().optional(),
   ownerPassportNumber: z.string().optional(),
   ownerBirthDate: z.string().optional(),
+  // Faqat registrationCountry "Xorij" bo'lganda kerak — Apex_Box orqali
+  // yuboriladigan sug'urta muddati (GET /apex-box/foreign-vehicle-durations).
+  foreignPolicyDurationId: z.string().optional(),
 }).superRefine((data, ctx) => {
+  if (data.registrationCountry === 'Xorij' && !data.foreignPolicyDurationId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Sug'urta muddatini tanlang", path: ['foreignPolicyDurationId'] });
+  }
   if (data.ownerIsApplicant) return;
   if (!data.ownerPassportSeries) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Egasining pasport seriyasini kiriting', path: ['ownerPassportSeries'] });

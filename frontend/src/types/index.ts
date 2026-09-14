@@ -26,6 +26,7 @@ export interface User {
   passportSeries?: string | null;
   passportNumber?: string | null;
   birthDate?: string | null;
+  citizenshipId?: string | null;
   googleId?: string | null;
   hasPassword?: boolean;
   isActive?: boolean;
