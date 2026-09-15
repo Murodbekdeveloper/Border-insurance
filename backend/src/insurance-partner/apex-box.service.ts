@@ -57,6 +57,33 @@ function splitFullName(fullName: string): {
   };
 }
 
+// CONFIRMED 2026-09-15: Apex_Box's money fields in CalculatePremiumResponse
+// come back as locale-formatted strings ("224 000,00 UZS" — thousands
+// space, comma decimal, currency suffix), not plain numbers. A bare
+// `Number(...)` on that is NaN, which is what made every real submission
+// fail before this was noticed (masked by an unrelated, misleading
+// "period/date" error surfaced first — see buildCreatePolicyRequest).
+function parseApexBoxAmount(raw: string): number {
+  return Number(raw.split(',')[0].replace(/\D/g, ''));
+}
+
+// Apex_Box's /osago validates the requested date range against the chosen
+// foreignVehicleId duration server-side and, when rejected, states the
+// valid range directly in result_message (e.g. "endDate должен быть в
+// диапазоне 2026-09-15 .. 2026-09-29"). There is no other source for this
+// per-duration day-count — not their reference endpoint, not their
+// Swagger doc (both confirmed 2026-09-15 to omit it entirely) — so a
+// probe-and-correct call is the only general way to get it right for
+// every foreignVehicleId, not just the ones tested by hand.
+function parseValidDateRange(
+  message: string,
+): { startDate: string; endDate: string } | null {
+  const match = /(\d{4}-\d{2}-\d{2})\s*\.\.\s*(\d{4}-\d{2}-\d{2})/.exec(
+    message,
+  );
+  return match ? { startDate: match[1], endDate: match[2] } : null;
+}
+
 export interface ApexBoxSubmitResult {
   clickLink: string;
   paymeLink: string;
@@ -123,21 +150,60 @@ export class ApexBoxService {
         `Apex_Box: ${calc.result_message || "noma'lum xatolik"}`,
       );
     }
-    const insurancePremium = Number(calc.insurance_premium);
-    if (!Number.isFinite(insurancePremium)) {
+    const insurancePremium = parseApexBoxAmount(calc.insurance_premium);
+    const sumInsured = parseApexBoxAmount(calc.insurance_sum);
+    if (!Number.isFinite(insurancePremium) || !Number.isFinite(sumInsured)) {
       throw new BadRequestException(
         "Apex_Box'dan noto'g'ri sug'urta mukofoti qaytdi",
       );
     }
 
-    const request = this.buildCreatePolicyRequest(
-      policy,
-      user,
-      foreignPolicyDurationId,
-      submission.ourTransactionId,
-      insurancePremium,
+    const today = new Date().toISOString().slice(0, 10);
+    // A same-day probe (startDate === endDate) hits a *different*, harder
+    // validation error ("endDate must be greater than startDate", no valid
+    // range stated) instead of the informative one this probe relies on —
+    // one day out is enough to dodge that while still being wrong for any
+    // real duration, so it reliably reaches the useful rejection.
+    let startDate = today;
+    let endDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    let result = await this.apexBoxClient.createPolicy(
+      this.buildCreatePolicyRequest(
+        policy,
+        user,
+        foreignPolicyDurationId,
+        submission.ourTransactionId,
+        insurancePremium,
+        sumInsured,
+        startDate,
+        endDate,
+      ),
     );
-    const result = await this.apexBoxClient.createPolicy(request);
+
+    // The placeholder startDate/endDate above are almost certainly wrong
+    // for any duration longer than one day — Asia Insurance's own
+    // rejection message states the valid range directly (see
+    // parseValidDateRange's comment for why this probe is necessary at
+    // all), so retry once with the corrected range instead of failing the
+    // whole submission over a guessable date mismatch.
+    if (result.result === 8) {
+      const range = parseValidDateRange(result.result_message ?? '');
+      if (range) {
+        startDate = range.startDate;
+        endDate = range.endDate;
+        result = await this.apexBoxClient.createPolicy(
+          this.buildCreatePolicyRequest(
+            policy,
+            user,
+            foreignPolicyDurationId,
+            submission.ourTransactionId,
+            insurancePremium,
+            sumInsured,
+            startDate,
+            endDate,
+          ),
+        );
+      }
+    }
 
     if (result.result !== 0 && result.result !== 123456) {
       // Apex_Box returns HTTP 200 even for business-logic errors — the
@@ -245,8 +311,14 @@ export class ApexBoxService {
     foreignPolicyDurationId: string,
   ): CalculatePremiumRequest {
     const today = new Date().toISOString().slice(0, 10);
+    // CONFIRMED 2026-09-15: unlike /osago (create), which wants an EMPTY
+    // pinfl for a foreign citizen, /osago_calculation rejects that with
+    // "Не указан ПИНФЛ владельца ТС" and instead wants this literal
+    // 14-zero placeholder — the same asymmetry already found on osago_v3's
+    // equivalent calc/create pair.
+    const APEX_BOX_CALC_PINFL_PLACEHOLDER = '00000000000000';
     const passportData = {
-      pinfl: '',
+      pinfl: APEX_BOX_CALC_PINFL_PLACEHOLDER,
       seria: user.passportSeries as string,
       number: user.passportNumber as string,
       issuedBy: '-',
@@ -256,7 +328,7 @@ export class ApexBoxService {
       policy.driverRestriction === DriverRestriction.RESTRICTED
         ? policy.drivers.map((d: Driver) => ({
             passportData: {
-              pinfl: '',
+              pinfl: APEX_BOX_CALC_PINFL_PLACEHOLDER,
               seria: d.passportSeries,
               number: d.passportNumber,
               issuedBy: '-',
@@ -294,6 +366,9 @@ export class ApexBoxService {
     foreignPolicyDurationId: string,
     ourTransactionId: number,
     insurancePremium: number,
+    sumInsured: number,
+    startDate: string,
+    endDate: string,
   ): CreatePolicyRequest {
     const name = splitFullName(user.fullName);
     const today = new Date().toISOString().slice(0, 10);
@@ -353,19 +428,22 @@ export class ApexBoxService {
       owner: {
         person: { passportData, fullName: name },
         applicantIsOwner: policy.vehicle.ownerIsApplicant,
+        residentOfUzb: ApexBoxResidentOfUzb.FOREIGNER,
       },
       details: {
-        // NOT YET RESOLVED (2026-09-10): Apex_Box's live /osago rejected
-        // every startDate/endDate combination tried (including its own
-        // suggested endDate verbatim) with "Переданные даты не
-        // соответствуют выбранному периоду" — the exact date-computation
-        // rule for a given foreignVehicleId duration is still unconfirmed
-        // by Asia Insurance. `today`/`today` is a placeholder until they
-        // answer; expect this call to fail with a clear result_message
-        // (surfaced below) until then.
-        issueDate: today,
-        startDate: today,
-        endDate: today,
+        // RESOLVED 2026-09-15: the "dates don't match the chosen period"
+        // rejection this used to always hit turned out to be caused by
+        // residentOfUzb being sent as a string ("2") instead of the
+        // integer their schema actually requires — once fixed, Asia
+        // Insurance's real per-duration date range came back correctly.
+        // startDate/endDate here are still just a same-day placeholder;
+        // submitPolicy() probes with this, reads the authoritative range
+        // out of a result:8 rejection, and rebuilds via this same method
+        // with the corrected dates (see parseValidDateRange's comment for
+        // why a probe is the only general way to get this right).
+        issueDate: startDate,
+        startDate,
+        endDate,
         driverNumberRestriction:
           policy.driverRestriction === DriverRestriction.RESTRICTED,
         transactionId: String(ourTransactionId),
@@ -373,7 +451,11 @@ export class ApexBoxService {
       cost: {
         discountId: '1',
         insurancePremium: String(insurancePremium),
-        sumInsured: '40000000',
+        // CONFIRMED 2026-09-15: must be Apex_Box's own calculated sum, not
+        // a fixed default — a hardcoded 40,000,000 was rejected (result:
+        // 17, "Ошибка в страховой сумме") for a vehicle whose real
+        // calculated sum differs (e.g. a heavy truck's 80,000,000).
+        sumInsured: String(sumInsured),
         // "На срок временного использования ТС, зарегистрированного в
         // иностранных государствах" — the foreign-vehicle contract term.
         contractTermConclusionId: '3',

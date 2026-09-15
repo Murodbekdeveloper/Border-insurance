@@ -25,12 +25,18 @@
 // vehicles (not just foreign citizens) as still unsupported — see
 // RegistrationCountry.FOREIGN handling in InsurancePartnerService.
 
+// CONFIRMED 2026-09-15 against Asia Insurance's own Swagger UI: this field
+// is typed `integer`, not the string we were sending ("2" instead of 2) —
+// that mismatch was silently swallowed by their validation layer and
+// surfaced instead as an unrelated, misleading period/date error (see the
+// NOT YET RESOLVED comment history in ApexBoxService — resolved now that
+// this is a number).
 export enum ApexBoxResidentOfUzb {
-  CITIZEN = '1',
-  FOREIGNER = '2',
-  STATELESS = '3',
-  MILITARY = '4',
-  FOREIGN_RESIDENT = '5',
+  CITIZEN = 1,
+  FOREIGNER = 2,
+  STATELESS = 3,
+  MILITARY = 4,
+  FOREIGN_RESIDENT = 5,
 }
 
 export interface ApexBoxPassportData {
@@ -93,6 +99,10 @@ export interface ApexBoxOwner {
   person?: ApexBoxOwnerPerson;
   organization?: ApexBoxOwnerOrganization;
   applicantIsOwner: boolean;
+  // CONFIRMED 2026-09-15: required here too, not just on applicant — a
+  // request without it on the owner was rejected the same way as sending
+  // it as a string (see the enum's own comment).
+  residentOfUzb: ApexBoxResidentOfUzb;
 }
 
 export interface ApexBoxDriver {
@@ -202,7 +212,16 @@ export interface CalculatePremiumRequest {
 export interface CalculatePremiumResponse {
   result: number;
   result_message: string;
+  // CONFIRMED 2026-09-15: both of these come back as locale-formatted
+  // strings like "224 000,00 UZS" (thousands-space, comma decimal,
+  // currency suffix) — NOT a plain number despite looking numeric at a
+  // glance. Must be parsed before use; see parseApexBoxAmount().
   insurance_premium: string;
+  // Required for CreatePolicyRequest.cost.sumInsured — sending a fixed
+  // default there (e.g. always 40000000) was rejected (result: 17,
+  // "Ошибка в страховой сумме") for a vehicle whose calculated sum
+  // differs (e.g. a heavy truck's 80,000,000).
+  insurance_sum: string;
   insuranceRate: number;
 }
 
