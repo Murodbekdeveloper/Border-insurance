@@ -1,14 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { RegisterFormData, registerSchema } from '@/lib/validation/schemas';
 import { maskLetters, maskPhoneUZ } from '@/lib/masks';
-import { register as registerUser } from '@/lib/api/auth';
+import { register as registerUser, loginAsGuest } from '@/lib/api/auth';
 import { API_URL } from '@/lib/api/client';
 import { toast } from '@/store/toastStore';
+import { useAuthStore } from '@/store/authStore';
 import { AuthShell } from '@/components/AuthShell';
 import { Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
@@ -16,6 +18,8 @@ import { Button } from '@/components/ui/Button';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const setSession = useAuthStore((s) => s.setSession);
+  const [isGuestLoading, setIsGuestLoading] = useState(false);
 
   const {
     register: registerField,
@@ -40,6 +44,20 @@ export default function RegisterPage() {
 
   const handleGoogleRegister = () => {
     window.location.href = `${API_URL}/auth/google`;
+  };
+
+  const handleGuestLogin = async () => {
+    setIsGuestLoading(true);
+    try {
+      const result = await loginAsGuest();
+      setSession(result.user, result.accessToken, result.refreshToken);
+      toast.success('Mehmon sifatida kirdingiz');
+      router.push('/policies');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Mehmon sifatida kirishda xatolik yuz berdi');
+    } finally {
+      setIsGuestLoading(false);
+    }
   };
 
   return (
@@ -106,6 +124,23 @@ export default function RegisterPage() {
           Ro&apos;yxatdan o&apos;tish
         </Button>
       </form>
+
+      <div className="mt-4 flex items-center gap-3 text-xs text-slate-400">
+        <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+        yoki
+        <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        fullWidth
+        isLoading={isGuestLoading}
+        onClick={handleGuestLogin}
+        className="mt-4"
+      >
+        Mehmon sifatida kirish
+      </Button>
 
       <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
         Hisobingiz bormi?{' '}
