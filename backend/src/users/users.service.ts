@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, MoreThanOrEqual, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 import { ResidentType, User } from './entities/user.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
@@ -133,6 +134,21 @@ export class UsersService {
       isEmailVerified: input.isEmailVerified,
       emailVerificationCode: input.emailVerificationCode,
       emailVerificationCodeExpiresAt: input.emailVerificationCodeExpiresAt,
+    });
+    return this.usersRepository.save(user);
+  }
+
+  // "Mehmon sifatida kirish" — a fully-usable account with no real email or
+  // password, so it skips register()'s email-verification step entirely.
+  // The generated email is never sent to and can't collide with a real
+  // registration (guest.<uuid>@guest.borderinsurance.uz isn't a domain
+  // anyone else can register under), so no uniqueness check is needed here.
+  async createGuestUser(): Promise<User> {
+    const user = this.usersRepository.create({
+      fullName: 'Mehmon',
+      email: `guest.${randomUUID()}@guest.borderinsurance.uz`,
+      isEmailVerified: true,
+      isGuest: true,
     });
     return this.usersRepository.save(user);
   }

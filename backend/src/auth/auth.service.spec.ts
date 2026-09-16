@@ -28,6 +28,7 @@ function buildUser(overrides: Partial<User> = {}): User {
     citizenshipId: null,
     isActive: true,
     isEmailVerified: true,
+    isGuest: false,
     emailVerificationCode: null,
     emailVerificationCodeExpiresAt: null,
     createdAt: new Date(),

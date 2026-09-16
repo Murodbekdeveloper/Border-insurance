@@ -75,6 +75,13 @@ export class User {
   @Column({ default: true })
   isEmailVerified: boolean;
 
+  // True only for accounts created via "Mehmon sifatida kirish" (see
+  // AuthService.guest) — a placeholder, non-deliverable email/no password,
+  // full access otherwise. Lets admin screens/reporting tell these apart
+  // from real registered users.
+  @Column({ default: false })
+  isGuest: boolean;
+
   @Exclude()
   @Column({ type: 'varchar', length: 6, nullable: true, select: false })
   emailVerificationCode: string | null;

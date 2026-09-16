@@ -1,11 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LoginFormData, loginSchema } from '@/lib/validation/schemas';
-import { login } from '@/lib/api/auth';
+import { login, loginAsGuest } from '@/lib/api/auth';
 import { API_URL } from '@/lib/api/client';
 import { getErrorCode } from '@/lib/api/errors';
 import { useAuthStore } from '@/store/authStore';
@@ -27,6 +28,7 @@ export default function LoginPage() {
   const accounts = useAccountsStore((s) => s.accounts);
   const removeAccount = useAccountsStore((s) => s.removeAccount);
   const { select: selectAccount, switchingUserId } = useAccountSwitch('/policies');
+  const [isGuestLoading, setIsGuestLoading] = useState(false);
 
   const {
     register,
@@ -56,6 +58,20 @@ export default function LoginPage() {
 
   const handleGoogleLogin = () => {
     window.location.href = `${API_URL}/auth/google`;
+  };
+
+  const handleGuestLogin = async () => {
+    setIsGuestLoading(true);
+    try {
+      const result = await loginAsGuest();
+      setSession(result.user, result.accessToken, result.refreshToken);
+      toast.success('Mehmon sifatida kirdingiz');
+      router.push('/policies');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Mehmon sifatida kirishda xatolik yuz berdi');
+    } finally {
+      setIsGuestLoading(false);
+    }
   };
 
   return (
@@ -116,6 +132,16 @@ export default function LoginPage() {
             Kirish
           </Button>
         </form>
+
+        <Button
+          type="button"
+          variant="outline"
+          fullWidth
+          isLoading={isGuestLoading}
+          onClick={handleGuestLogin}
+        >
+          Mehmon sifatida kirish
+        </Button>
       </div>
 
       <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">

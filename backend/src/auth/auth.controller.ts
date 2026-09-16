@@ -45,6 +45,17 @@ export class AuthController {
     return this.authService.register(dto);
   }
 
+  @Post('guest')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @ApiOperation({
+    summary:
+      "Mehmon sifatida kirish — ro'yxatdan o'tmasdan, darhol to'liq huquqli hisob ochish",
+  })
+  @ApiResponse({ status: 201, type: AuthResponseDto })
+  async guest() {
+    return this.authService.guest();
+  }
+
   @Post('verify-email')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Emailga yuborilgan tasdiqlash kodini tekshirish' })

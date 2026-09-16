@@ -70,6 +70,11 @@ export class AuthService {
     });
   }
 
+  async guest(): Promise<{ user: User } & AuthTokens> {
+    const user = await this.usersService.createGuestUser();
+    return { user, ...this.issueTokens(user) };
+  }
+
   async register(
     dto: RegisterDto,
   ): Promise<{ email: string; message: string }> {

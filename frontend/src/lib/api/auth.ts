@@ -52,6 +52,18 @@ export async function login(data: LoginFormData): Promise<AuthResult> {
   }
 }
 
+// Ro'yxatdan o'tmasdan, darhol to'liq huquqli (email tasdiqlashsiz) hisob
+// ochadi — natija oddiy login() bilan bir xil shaklda, setSession()'ga
+// to'g'ridan-to'g'ri beriladi.
+export async function loginAsGuest(): Promise<AuthResult> {
+  try {
+    const { data } = await apiClient.post<AuthResult>('/auth/guest');
+    return data;
+  } catch (err) {
+    throwApiError(err, 'Mehmon sifatida kirishda xatolik yuz berdi');
+  }
+}
+
 export async function updateResidentType(residentType: NonNullable<User['residentType']>): Promise<User> {
   try {
     const { data } = await apiClient.patch<User>('/users/me/resident-type', { residentType });
