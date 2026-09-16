@@ -33,11 +33,15 @@ export class Driver {
   @Column()
   passportNumber: string;
 
-  @Column()
-  licenseNumber: string;
+  // Only actually required for a driver on a foreign-registered vehicle —
+  // Asia Insurance's Apex_Box contract needs it; their domestic osago_v3
+  // /save-policy Driver shape has no license fields at all. Nullable so a
+  // domestic driver can skip it (InsurancePartnerService never reads it).
+  @Column({ type: 'varchar', nullable: true })
+  licenseNumber: string | null;
 
-  @Column({ type: 'date' })
-  licenseIssueDate: string;
+  @Column({ type: 'date', nullable: true })
+  licenseIssueDate: string | null;
 
   // Never sent to Asia Insurance — nullable since the web form no longer
   // collects it (the mobile app still does, for now).

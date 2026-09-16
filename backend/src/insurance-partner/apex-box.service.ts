@@ -281,6 +281,14 @@ export class ApexBoxService {
     if (!user.citizenshipId) {
       missing.push('fuqarolik (davlat) tanlanmagan (profil)');
     }
+    // Only required for a foreign-registered vehicle (this whole flow) —
+    // see Vehicle.city's comment. The form only collects it unconditionally
+    // for a "Xorij" vehicle, so an already-created vehicle reaching this
+    // service should always have it, but check explicitly rather than
+    // sending Apex_Box an empty applicant.address.
+    if (!policy.vehicle.city) {
+      missing.push('mashina manzili (shahar)');
+    }
     // Mirrors InsurancePartnerService.assertReadyForSubmission's identical
     // check — without it, a driver with no relativeId set would silently
     // go out as relative "1" (ОТЕЦ/father) below instead of failing loudly,
@@ -291,6 +299,16 @@ export class ApexBoxService {
       if (missingRelative) {
         missing.push(
           `${missingRelative.fullName}: transport egasi bilan qarindoshlik darajasi`,
+        );
+      }
+      // See Driver.licenseNumber's comment — required here (Apex_Box), not
+      // at the DTO level, since that's only known once the vehicle is.
+      const missingLicense = policy.drivers.find(
+        (d) => !d.licenseNumber || !d.licenseIssueDate,
+      );
+      if (missingLicense) {
+        missing.push(
+          `${missingLicense.fullName}: haydovchilik guvohnomasi ma'lumotlari`,
         );
       }
     }
@@ -398,12 +416,13 @@ export class ApexBoxService {
                 issueDate: today,
               },
               fullName: driverName,
-              licenseNumber: d.licenseNumber,
+              // Guaranteed non-null here (as is relative below) —
+              // assertReadyForSubmission() above already rejected the
+              // submission otherwise.
+              licenseNumber: d.licenseNumber as string,
               licenseSeria: '-',
-              licenseIssueDate: d.licenseIssueDate,
+              licenseIssueDate: d.licenseIssueDate as string,
               birthDate: d.birthDate,
-              // Guaranteed non-null here — assertReadyForSubmission()
-              // above already rejected the submission otherwise.
               relative: String(d.relativeId),
               residentOfUzb: ApexBoxResidentOfUzb.FOREIGNER,
             };
@@ -421,7 +440,9 @@ export class ApexBoxService {
           regionId: PLACEHOLDER_REGION_ID,
           districtId: PLACEHOLDER_DISTRICT_ID,
         },
-        address: policy.vehicle.city,
+        // Guaranteed non-null here — assertReadyForSubmission() above
+        // already rejected the submission otherwise.
+        address: policy.vehicle.city as string,
         residentOfUzb: ApexBoxResidentOfUzb.FOREIGNER,
         citizenshipId: user.citizenshipId as string,
       },

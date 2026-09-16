@@ -153,7 +153,7 @@ function UserDetailContent({ id }: { id: string }) {
           {vehicles.map((v) => (
             <div key={v.id} className="rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800">
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{v.plateNumber}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{v.model} · {v.city}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{v.city ? `${v.model} · ${v.city}` : v.model}</p>
             </div>
           ))}
         </Section>

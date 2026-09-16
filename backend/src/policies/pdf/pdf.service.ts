@@ -93,10 +93,13 @@ function splitFio(fullName: string): { f: string; i: string; o: string } {
 // (e.g. "LIC123456"), not the reference document's separate series+number.
 // Splits it when it looks like "<letters><digits>"; otherwise the whole
 // string is shown as the number with an empty series.
-function splitLicense(licenseNumber: string): {
+function splitLicense(licenseNumber: string | null): {
   series: string;
   number: string;
 } {
+  // Only collected for a foreign-registered vehicle's drivers now — see
+  // Driver.licenseNumber's comment — so a domestic driver may not have one.
+  if (!licenseNumber) return { series: '', number: '' };
   const match = /^([A-Za-z]{1,3})\s*([0-9]+)$/.exec(licenseNumber.trim());
   return match
     ? { series: match[1].toUpperCase(), number: match[2] }

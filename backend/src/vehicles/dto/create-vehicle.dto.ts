@@ -82,10 +82,17 @@ export class CreateVehicleDto {
   @Matches(ALPHANUMERIC_REGEX)
   engineNumber: string;
 
-  @ApiProperty({ example: 'Toshkent shahri' })
+  // Only actually required for a foreign-registered vehicle — see
+  // Vehicle.city's comment. Enforced here rather than left fully
+  // unvalidated so a "Xorij" vehicle can't be created with a blank one.
+  @ApiPropertyOptional({ example: 'Toshkent shahri' })
+  @ValidateIf(
+    (dto: CreateVehicleDto) =>
+      dto.registrationCountry === RegistrationCountry.FOREIGN,
+  )
   @IsString()
   @MinLength(1)
-  city: string;
+  city?: string;
 
   @ApiProperty({ example: '+998901234567' })
   @Matches(PHONE_REGEX)

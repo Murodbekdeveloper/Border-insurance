@@ -14,7 +14,17 @@ interface CreatePolicyInput {
 
 export async function createPolicy(input: CreatePolicyInput): Promise<InsurancePolicy> {
   try {
-    const { data } = await apiClient.post<InsurancePolicy>('/policies', input);
+    // Domestic (UZ-registered) drivers leave these blank — the backend's
+    // DriverDto only skips @MinLength when the value is undefined, not ''.
+    const payload = {
+      ...input,
+      drivers: input.drivers.map((driver) => ({
+        ...driver,
+        licenseNumber: driver.licenseNumber || undefined,
+        licenseIssueDate: driver.licenseIssueDate || undefined,
+      })),
+    };
+    const { data } = await apiClient.post<InsurancePolicy>('/policies', payload);
     return data;
   } catch (err) {
     throw new Error(getErrorMessage(err, 'Arizani saqlashda xatolik yuz berdi'));

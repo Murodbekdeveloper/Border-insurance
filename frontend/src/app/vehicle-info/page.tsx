@@ -385,14 +385,14 @@ function VehicleInfoContent() {
           />
           {isForeign ? (
             <Input
-              label="Shahar"
+              label="Shahar / manzil"
               placeholder="Shahar nomini kiriting"
               error={errors.city?.message}
               {...register('city')}
             />
           ) : (
             <Select
-              label="Shahar"
+              label="Shahar (ixtiyoriy)"
               options={cityOptions}
               placeholder="Shaharni tanlang"
               error={errors.city?.message}

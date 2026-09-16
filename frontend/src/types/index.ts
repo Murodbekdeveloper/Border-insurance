@@ -87,7 +87,7 @@ export interface Vehicle {
   manufactureYear: number;
   bodyNumber: string;
   engineNumber: string;
-  city: string;
+  city?: string | null;
   phone: string;
   ownerIsApplicant: boolean;
   ownerPassportSeries?: string | null;
@@ -101,8 +101,8 @@ export interface Driver {
   birthDate: string;
   passportSeries: string;
   passportNumber: string;
-  licenseNumber: string;
-  licenseIssueDate: string;
+  licenseNumber?: string | null;
+  licenseIssueDate?: string | null;
   drivingExperienceSince: number | null;
   relativeId?: number | null;
 }

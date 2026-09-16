@@ -102,6 +102,9 @@ export class PoliciesService {
       dto.driverRestriction === DriverRestriction.RESTRICTED ? dto.drivers : [];
 
     for (const driver of drivers) {
+      // Only collected/required for a foreign-registered vehicle now — see
+      // Driver.licenseNumber's comment — so a domestic driver may not have one.
+      if (!driver.licenseIssueDate) continue;
       const birthDate = new Date(driver.birthDate);
       const licenseIssueDate = new Date(driver.licenseIssueDate);
       if (licenseIssueDate < birthDate) {

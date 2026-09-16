@@ -404,7 +404,7 @@ function VehiclesCard() {
           <div key={vehicle.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800">
             <div>
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{vehicle.plateNumber}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{vehicle.model} · {vehicle.city}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{vehicle.city ? `${vehicle.model} · ${vehicle.city}` : vehicle.model}</p>
             </div>
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 dark:bg-white/5 dark:text-slate-400">
               {WEIGHT_LABEL[vehicle.weightCategory] ?? vehicle.weightCategory}

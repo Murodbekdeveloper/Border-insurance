@@ -62,8 +62,12 @@ export class Vehicle {
   @Column({ unique: true })
   engineNumber: string;
 
-  @Column()
-  city: string;
+  // Only actually required for a foreign-registered vehicle — Asia
+  // Insurance's Apex_Box contract sends it on as applicant.address
+  // (see ApexBoxService). Their domestic osago_v3 API has no such field at
+  // all, so an Uzbek-registered vehicle's city is nullable.
+  @Column({ type: 'varchar', nullable: true })
+  city: string | null;
 
   @Column()
   phone: string;

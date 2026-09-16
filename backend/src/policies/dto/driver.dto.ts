@@ -39,14 +39,21 @@ export class DriverDto {
   @MaxLength(20)
   passportNumber: string;
 
-  @ApiProperty({ example: 'LIC123456' })
+  // Only actually required for a driver on a foreign-registered vehicle —
+  // see Driver.licenseNumber's comment. Not known at this DTO's level
+  // (that's a sibling property of the *vehicle*, not the driver), so it's
+  // optional here and enforced instead in
+  // ApexBoxService.assertReadyForSubmission once the vehicle is known.
+  @ApiPropertyOptional({ example: 'LIC123456' })
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  licenseNumber: string;
+  licenseNumber?: string;
 
-  @ApiProperty({ example: '2015-06-01' })
+  @ApiPropertyOptional({ example: '2015-06-01' })
+  @IsOptional()
   @IsDateString()
-  licenseIssueDate: string;
+  licenseIssueDate?: string;
 
   // Never sent to Asia Insurance — optional since the web form no longer
   // collects it (the mobile app still does, for now).

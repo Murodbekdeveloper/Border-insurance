@@ -11,7 +11,7 @@ export async function createVehicle(data: VehicleFormData): Promise<Vehicle> {
     // such field and the global ValidationPipe rejects unknown properties
     // with a 400, so it must not be forwarded here even though it lives on
     // the same form/store object for convenience.
-    const payload = { ...data };
+    const payload = { ...data, city: data.city || undefined };
     delete payload.foreignPolicyDurationId;
     const { data: vehicle } = await apiClient.post<Vehicle>('/vehicles', payload);
     return vehicle;

@@ -37,6 +37,11 @@ function DriverRestrictionContent() {
   // Chet el fuqarosining pasporti O'zbekiston pasporti formatiga (2 harf + 7 raqam)
   // to'g'ri kelmaydi, shuning uchun norezidentlar uchun bu maydonlar erkinroq bo'ladi.
   const isForeign = residentType === 'non_resident';
+  // Mashinaning o'zi xorijda ro'yxatdan o'tganda (Apex_Box) haydovchilik
+  // guvohnomasi haqiqatan ham kerak; O'zbekiston mashinalarida Asia
+  // Insurance'ning osago_v3'ida bunday maydon umuman yo'q — bu isForeign'dan
+  // mustaqil (arizachi rezidentligi emas, mashinaning davlati).
+  const requireLicense = vehicle?.registrationCountry === 'Xorij';
 
   useEffect(() => {
     if (!vehicleId) {
@@ -66,7 +71,7 @@ function DriverRestrictionContent() {
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<DriverRestrictionFormData>({
-    resolver: zodResolver(getDriverRestrictionSchema(isForeign)),
+    resolver: zodResolver(getDriverRestrictionSchema(isForeign, requireLicense)),
     defaultValues: {
       driverRestriction: driverRestriction ?? 'cheklanmagan',
       drivers: drivers.length > 0 ? drivers : [],
@@ -244,13 +249,13 @@ function DriverRestrictionContent() {
                     }
                   />
                   <Input
-                    label="Haydovchilik guvohnomasi raqami"
+                    label={requireLicense ? 'Haydovchilik guvohnomasi raqami' : 'Haydovchilik guvohnomasi raqami (ixtiyoriy)'}
                     error={errors.drivers?.[index]?.licenseNumber?.message}
                     {...register(`drivers.${index}.licenseNumber`)}
                     onChange={(e) => setValue(`drivers.${index}.licenseNumber`, maskAlnumUpper(e.target.value, 12), { shouldValidate: true, shouldDirty: true })}
                   />
                   <Input
-                    label="Guvohnoma berilgan sana"
+                    label={requireLicense ? 'Guvohnoma berilgan sana' : 'Guvohnoma berilgan sana (ixtiyoriy)'}
                     type="date"
                     max={new Date().toISOString().split('T')[0]}
                     error={errors.drivers?.[index]?.licenseIssueDate?.message}

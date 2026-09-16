@@ -71,7 +71,11 @@ export const vehicleSchema = z.object({
     .min(5, 'Dvigatel raqami kamida 5 ta belgidan iborat bo\'lishi kerak')
     .max(17, 'Dvigatel raqami 17 ta belgidan oshmasligi kerak')
     .regex(alphanumericRegex, 'Dvigatel raqami faqat lotin harflar va raqamlardan iborat bo\'lishi kerak'),
-  city: z.string().min(1, 'Shaharni tanlang'),
+  // Faqat registrationCountry "Xorij" bo'lganda kerak (Apex_Box'ga
+  // applicant.address sifatida yuboriladi) — O'zbekistonda ro'yxatdan
+  // o'tgan mashinalar uchun Asia Insurance'ning osago_v3 API'sida bunday
+  // maydon umuman yo'q.
+  city: z.string().optional(),
   phone: z.string().regex(phoneRegex, 'Telefon raqami +998XXXXXXXXX formatida bo\'lishi kerak'),
   // Sug'urta kompaniyasi transport egasi ma'lumotini alohida talab qiladi —
   // odatda sug'urta oluvchining o'zi, shuning uchun standart holatda true.
@@ -84,8 +88,13 @@ export const vehicleSchema = z.object({
   // yuboriladigan sug'urta muddati (GET /apex-box/foreign-vehicle-durations).
   foreignPolicyDurationId: z.string().optional(),
 }).superRefine((data, ctx) => {
-  if (data.registrationCountry === 'Xorij' && !data.foreignPolicyDurationId) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Sug'urta muddatini tanlang", path: ['foreignPolicyDurationId'] });
+  if (data.registrationCountry === 'Xorij') {
+    if (!data.foreignPolicyDurationId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Sug'urta muddatini tanlang", path: ['foreignPolicyDurationId'] });
+    }
+    if (!data.city) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Manzilni kiriting', path: ['city'] });
+    }
   }
   if (data.ownerIsApplicant) return;
   if (!data.ownerPassportSeries) {
@@ -108,11 +117,6 @@ const driverBaseSchema = z.object({
     .string()
     .min(1, 'Tug\'ilgan sanani kiriting')
     .refine((val) => new Date(val) <= new Date(), 'Sana kelajakda bo\'lishi mumkin emas'),
-  licenseNumber: z.string().min(1, 'Guvohnoma raqamini kiriting'),
-  licenseIssueDate: z
-    .string()
-    .min(1, 'Guvohnoma berilgan sanasini kiriting')
-    .refine((val) => new Date(val) <= new Date(), 'Sana kelajakda bo\'lishi mumkin emas'),
   // Asia Insurance API hali ulanmagan bo'lsa forma bu maydonni ko'rsatmaydi
   // — shuning uchun ixtiyoriy.
   relativeId: z.number().optional(),
@@ -122,7 +126,13 @@ const driverBaseSchema = z.object({
 // el fuqarolarining pasportlari bu formatga umuman to'g'ri kelmaydi — shuning
 // uchun norezident arizalar uchun bu maydonlar erkinroq (istalgan alfanumerik
 // qiymat) qabul qilinadi.
-export function getDriverSchema(isForeign: boolean) {
+//
+// requireLicense — mashinaning o'zi xorijda ro'yxatdan o'tganda (Apex_Box)
+// haqiqatan ham kerak; O'zbekiston mashinalarida Asia Insurance'ning
+// osago_v3 /save-policy'sida guvohnoma maydoni umuman yo'q. Bu isForeign'dan
+// mustaqil — isForeign arizachining fuqaroligiga, requireLicense esa
+// mashinaning ro'yxatdan o'tgan davlatiga bog'liq.
+export function getDriverSchema(isForeign: boolean, requireLicense = true) {
   return driverBaseSchema.extend({
     passportSeries: isForeign
       ? z.string().min(1, 'Pasport seriyasi/kodini kiriting').max(10, 'Ko\'pi bilan 10 ta belgi')
@@ -133,16 +143,28 @@ export function getDriverSchema(isForeign: boolean) {
     passportNumber: isForeign
       ? z.string().min(3, 'Pasport raqamini kiriting').max(20, 'Ko\'pi bilan 20 ta belgi')
       : z.string().regex(passportNumberRegex, 'Pasport raqami 7 ta raqamdan iborat bo\'lishi kerak'),
+    licenseNumber: requireLicense
+      ? z.string().min(1, 'Guvohnoma raqamini kiriting')
+      : z.string().optional(),
+    licenseIssueDate: requireLicense
+      ? z
+          .string()
+          .min(1, 'Guvohnoma berilgan sanasini kiriting')
+          .refine((val) => new Date(val) <= new Date(), 'Sana kelajakda bo\'lishi mumkin emas')
+      : z
+          .string()
+          .optional()
+          .refine((val) => !val || new Date(val) <= new Date(), 'Sana kelajakda bo\'lishi mumkin emas'),
   });
 }
 export const driverSchema = getDriverSchema(false);
 export type DriverFormData = z.infer<ReturnType<typeof getDriverSchema>>;
 
-export function getDriverRestrictionSchema(isForeign: boolean) {
+export function getDriverRestrictionSchema(isForeign: boolean, requireLicense = true) {
   return z
     .object({
       driverRestriction: z.enum(['cheklangan', 'cheklanmagan']),
-      drivers: z.array(getDriverSchema(isForeign)),
+      drivers: z.array(getDriverSchema(isForeign, requireLicense)),
     })
     .refine(
       (data) => data.driverRestriction === 'cheklanmagan' || data.drivers.length > 0,
