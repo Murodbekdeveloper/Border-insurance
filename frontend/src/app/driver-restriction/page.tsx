@@ -129,6 +129,7 @@ function DriverRestrictionContent() {
         driverRestriction: data.driverRestriction,
         drivers: finalDrivers,
         foreignPolicyDurationId: vehicle?.foreignPolicyDurationId,
+        periodId: vehicle?.periodId ? Number(vehicle.periodId) : undefined,
       });
       setDriverRestriction(data.driverRestriction, finalDrivers);
       setPolicy(policy.id);

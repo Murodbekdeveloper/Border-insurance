@@ -8,6 +8,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AsiaInsuranceClientService } from './asia-insurance-client.service';
 import { AsiaInsuranceApiError } from './asia-insurance-api.error';
+import {
+  RELATIVE_NAME_UZ,
+  translateRelativeItems,
+} from './reference-translations';
 
 export const INSURANCE_PARTNER_NOT_CONFIGURED_CODE =
   'INSURANCE_PARTNER_NOT_CONFIGURED';
@@ -27,6 +31,25 @@ export class InsurancePartnerController {
     private readonly asiaInsuranceClient: AsiaInsuranceClientService,
   ) {}
 
+  @Get('periods')
+  @ApiOperation({
+    summary:
+      "O'zbekistonda ro'yxatdan o'tgan transport uchun sug'urta muddatlari",
+  })
+  async getPeriods() {
+    try {
+      return await this.asiaInsuranceClient.getPeriods();
+    } catch (err) {
+      if (err instanceof AsiaInsuranceApiError && err.httpStatus === 0) {
+        throw new ServiceUnavailableException({
+          code: INSURANCE_PARTNER_NOT_CONFIGURED_CODE,
+          message: 'Asia Insurance API hali ulanmagan',
+        });
+      }
+      throw err;
+    }
+  }
+
   @Get('relatives')
   @ApiOperation({
     summary:
@@ -34,7 +57,10 @@ export class InsurancePartnerController {
   })
   async getRelatives() {
     try {
-      return await this.asiaInsuranceClient.getRelatives();
+      // Asia Insurance's /get-relative only returns Russian names (e.g.
+      // "ОТЕЦ") — see reference-translations.ts's module comment.
+      const { items } = await this.asiaInsuranceClient.getRelatives();
+      return { items: translateRelativeItems(items, RELATIVE_NAME_UZ) };
     } catch (err) {
       if (err instanceof AsiaInsuranceApiError && err.httpStatus === 0) {
         throw new ServiceUnavailableException({

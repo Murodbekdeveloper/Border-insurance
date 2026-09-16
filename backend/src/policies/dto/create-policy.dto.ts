@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
@@ -43,4 +44,15 @@ export class CreatePolicyDto {
   @IsOptional()
   @IsString()
   foreignPolicyDurationId?: string;
+
+  // Only meaningful (and used, see PoliciesService.submitToPartner) when
+  // the linked vehicle's registrationCountry is "UZ" — an id from
+  // GET /insurance-partner/periods. Optional here for the same reason as
+  // foreignPolicyDurationId above, and because InsurancePartnerService
+  // still falls back to a fixed 1-year lookup when unset.
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  periodId?: number;
 }

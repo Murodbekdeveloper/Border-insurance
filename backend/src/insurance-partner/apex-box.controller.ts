@@ -8,6 +8,11 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApexBoxClientService } from './apex-box-client.service';
 import { AsiaInsuranceApiError } from './asia-insurance-api.error';
+import {
+  COUNTRY_NAME_UZ,
+  FOREIGN_VEHICLE_DURATION_NAME_UZ,
+  translateReferenceItems,
+} from './reference-translations';
 
 export const APEX_BOX_NOT_CONFIGURED_CODE = 'APEX_BOX_NOT_CONFIGURED';
 
@@ -25,7 +30,10 @@ export class ApexBoxController {
   @Get('countries')
   @ApiOperation({ summary: "Fuqarolik (davlat) ro'yxati" })
   async getCountries() {
-    return this.wrap(() => this.apexBoxClient.getCountries());
+    // Asia Insurance's /countries only returns Russian names — see
+    // reference-translations.ts's module comment.
+    const { items } = await this.wrap(() => this.apexBoxClient.getCountries());
+    return { items: translateReferenceItems(items, COUNTRY_NAME_UZ) };
   }
 
   @Get('foreign-vehicle-durations')
@@ -33,9 +41,12 @@ export class ApexBoxController {
     summary: "Chet elda ro'yxatdan o'tgan transport uchun sug'urta muddatlari",
   })
   async getForeignVehicleDurations() {
-    return this.wrap(() =>
+    const { items } = await this.wrap(() =>
       this.apexBoxClient.getForeignVehiclePolicyDurations(),
     );
+    return {
+      items: translateReferenceItems(items, FOREIGN_VEHICLE_DURATION_NAME_UZ),
+    };
   }
 
   private async wrap<T>(fn: () => Promise<T>): Promise<T> {

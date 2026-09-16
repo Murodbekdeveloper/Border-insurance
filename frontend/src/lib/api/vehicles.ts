@@ -6,13 +6,15 @@ import { getErrorMessage } from '@/lib/api/errors';
 
 export async function createVehicle(data: VehicleFormData): Promise<Vehicle> {
   try {
-    // foreignPolicyDurationId belongs to the policy (see CreatePolicyDto in
-    // policies.ts), not the vehicle — the backend's CreateVehicleDto has no
-    // such field and the global ValidationPipe rejects unknown properties
-    // with a 400, so it must not be forwarded here even though it lives on
-    // the same form/store object for convenience.
+    // foreignPolicyDurationId/periodId belong to the policy (see
+    // CreatePolicyDto in policies.ts), not the vehicle — the backend's
+    // CreateVehicleDto has no such fields and the global ValidationPipe
+    // rejects unknown properties with a 400, so they must not be forwarded
+    // here even though they live on the same form/store object for
+    // convenience.
     const payload = { ...data, city: data.city || undefined };
     delete payload.foreignPolicyDurationId;
+    delete payload.periodId;
     const { data: vehicle } = await apiClient.post<Vehicle>('/vehicles', payload);
     return vehicle;
   } catch (err) {

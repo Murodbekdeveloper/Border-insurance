@@ -87,6 +87,9 @@ export const vehicleSchema = z.object({
   // Faqat registrationCountry "Xorij" bo'lganda kerak — Apex_Box orqali
   // yuboriladigan sug'urta muddati (GET /apex-box/foreign-vehicle-durations).
   foreignPolicyDurationId: z.string().optional(),
+  // Oynali juftlashuv — faqat registrationCountry "UZ" bo'lganda kerak
+  // (GET /insurance-partner/periods, osago_v3'ning /get-period'i).
+  periodId: z.string().optional(),
 }).superRefine((data, ctx) => {
   if (data.registrationCountry === 'Xorij') {
     if (!data.foreignPolicyDurationId) {
@@ -95,6 +98,8 @@ export const vehicleSchema = z.object({
     if (!data.city) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Manzilni kiriting', path: ['city'] });
     }
+  } else if (!data.periodId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Sug'urta muddatini tanlang", path: ['periodId'] });
   }
   if (data.ownerIsApplicant) return;
   if (!data.ownerPassportSeries) {

@@ -88,6 +88,7 @@ export class InsurancePartnerService {
   async submitPolicy(
     policy: InsurancePolicy,
     user: User,
+    requestedPeriodId?: number,
   ): Promise<PartnerSubmitResult> {
     this.assertReadyForSubmission(policy, user);
 
@@ -107,7 +108,7 @@ export class InsurancePartnerService {
     }
     const startDate = submission.startDate ?? todayIsoDate();
 
-    const periodId = await this.resolveOneYearPeriodId();
+    const periodId = requestedPeriodId ?? (await this.resolveOneYearPeriodId());
     const limited = policy.driverRestriction === DriverRestriction.RESTRICTED;
     const owner = { person: this.buildOwnerPerson(policy, user) };
     const applicant = {

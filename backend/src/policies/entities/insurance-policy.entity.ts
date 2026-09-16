@@ -64,6 +64,14 @@ export class InsurancePolicy {
   @Column({ type: 'varchar', nullable: true })
   foreignPolicyDurationId: string | null;
 
+  // Only meaningful when vehicle.registrationCountry is "UZ" — an id from
+  // GET /insurance-partner/periods (osago_v3's /get-period), the domestic
+  // policy duration the customer picked. Nullable: InsurancePartnerService
+  // falls back to its own fixed 1-year lookup when unset, so this stays
+  // backward-compatible with drafts created before the picker existed.
+  @Column({ type: 'int', nullable: true })
+  periodId: number | null;
+
   @Column({ type: 'enum', enum: PolicyStatus, default: PolicyStatus.DRAFT })
   status: PolicyStatus;
 

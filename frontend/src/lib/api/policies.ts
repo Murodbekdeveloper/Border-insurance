@@ -10,6 +10,9 @@ interface CreatePolicyInput {
   // Only for a vehicle with registrationCountry "Xorij" — see
   // GET /apex-box/foreign-vehicle-durations.
   foreignPolicyDurationId?: string;
+  // Only for a vehicle with registrationCountry "UZ" — see
+  // GET /insurance-partner/periods.
+  periodId?: number;
 }
 
 export async function createPolicy(input: CreatePolicyInput): Promise<InsurancePolicy> {

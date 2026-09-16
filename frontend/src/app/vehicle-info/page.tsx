@@ -11,6 +11,7 @@ import { maskAlnumUpper, maskDigits, maskPhoneUZ, maskPlateNumber, maskYear } fr
 import { createVehicle, lookupVehicle } from '@/lib/api/vehicles';
 import { extractVehicleDocument, OcrNotConfiguredError } from '@/lib/api/ocr';
 import { getCountries, getForeignVehicleDurations, ApexBoxReferenceOption } from '@/lib/api/apexBox';
+import { getPeriods, PeriodOption } from '@/lib/api/insurancePartner';
 import { updateCitizenship } from '@/lib/api/auth';
 import { useAuthStore } from '@/store/authStore';
 import { useApplicationStore } from '@/store/applicationStore';
@@ -100,6 +101,39 @@ function VehicleInfoContent() {
   useEffect(() => {
     if (isForeign) return;
     setValue('foreignPolicyDurationId', undefined, { shouldValidate: true });
+  }, [isForeign, setValue]);
+
+  // O'zbekistonda ro'yxatdan o'tgan mashinalar uchun sug'urta muddati —
+  // yuqoridagi foreignPolicyDurationId'ning oynali juftlashuvi, faqat UZ
+  // uchun (GET /insurance-partner/periods, osago_v3'ning /get-period'i).
+  const [periods, setPeriods] = useState<PeriodOption[]>([]);
+  const [periodsLoading, setPeriodsLoading] = useState(false);
+  const [periodsError, setPeriodsError] = useState(false);
+  const periodsLoadingRef = useRef(false);
+  const loadPeriods = useCallback(() => {
+    if (periodsLoadingRef.current) return;
+    periodsLoadingRef.current = true;
+    setPeriodsLoading(true);
+    setPeriodsError(false);
+    getPeriods()
+      .then(setPeriods)
+      .catch(() => {
+        setPeriodsError(true);
+        toast.error("Sug'urta muddatlari ro'yxatini olishda xatolik yuz berdi");
+      })
+      .finally(() => {
+        periodsLoadingRef.current = false;
+        setPeriodsLoading(false);
+      });
+  }, []);
+  useEffect(() => {
+    if (isForeign || periods.length > 0) return;
+    loadPeriods();
+  }, [isForeign, periods.length, loadPeriods]);
+
+  useEffect(() => {
+    if (!isForeign) return;
+    setValue('periodId', undefined, { shouldValidate: true });
   }, [isForeign, setValue]);
 
   // Apex_Box orqali yuboriladigan har qanday xorijiy transport (rezident
@@ -419,6 +453,28 @@ function VehicleInfoContent() {
               disabled={foreignDurationsLoading}
               error={errors.foreignPolicyDurationId?.message}
               {...register('foreignPolicyDurationId')}
+            />
+          )
+        )}
+
+        {!isForeign && (
+          periodsError && periods.length === 0 ? (
+            <div className="flex flex-col items-start gap-2 rounded-xl border border-red-200 p-4 dark:border-red-900/40">
+              <p className="text-sm text-red-600">
+                Sug&apos;urta muddatlari ro&apos;yxatini olishda xatolik yuz berdi. Internet aloqasini tekshirib, qayta urinib ko&apos;ring.
+              </p>
+              <Button type="button" variant="outline" isLoading={periodsLoading} onClick={loadPeriods}>
+                Qayta urinish
+              </Button>
+            </div>
+          ) : (
+            <Select
+              label="Sug'urta muddati"
+              options={periods.map((p) => ({ value: String(p.period), label: p.name }))}
+              placeholder={periodsLoading ? 'Yuklanmoqda...' : 'Muddatni tanlang'}
+              disabled={periodsLoading}
+              error={errors.periodId?.message}
+              {...register('periodId')}
             />
           )
         )}

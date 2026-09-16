@@ -13,7 +13,27 @@ export interface RelativeOption {
   name: string;
 }
 
+export interface PeriodOption {
+  period: number;
+  name: string;
+}
+
 const NOT_CONFIGURED_CODE = 'INSURANCE_PARTNER_NOT_CONFIGURED';
+
+// O'zbekistonda ro'yxatdan o'tgan transport uchun sug'urta muddatlari
+// ro'yxati — GET /insurance-partner/periods. getRelatives() bilan bir xil
+// "hali ulanmagan" naqshi.
+export async function getPeriods(): Promise<PeriodOption[]> {
+  try {
+    const { data } = await apiClient.get<{ items: PeriodOption[] }>('/insurance-partner/periods');
+    return data.items;
+  } catch (err) {
+    if (axios.isAxiosError(err) && (err.response?.data as { code?: string } | undefined)?.code === NOT_CONFIGURED_CODE) {
+      throw new InsurancePartnerNotConfiguredError();
+    }
+    throw err;
+  }
+}
 
 // Haydovchining transport egasi bilan qarindoshlik darajalari ro'yxati —
 // Asia Insurance'ning API kaliti hali sozlanmagan bo'lsa, backend

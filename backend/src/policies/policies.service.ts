@@ -122,6 +122,7 @@ export class PoliciesService {
       price: 0,
       status: PolicyStatus.DRAFT,
       foreignPolicyDurationId: dto.foreignPolicyDurationId ?? null,
+      periodId: dto.periodId ?? null,
     });
     return this.policiesRepository.save(policy);
   }
@@ -198,7 +199,11 @@ export class PoliciesService {
     }
 
     const { payallUrl, amountUzs } =
-      await this.insurancePartnerService.submitPolicy(policy, user);
+      await this.insurancePartnerService.submitPolicy(
+        policy,
+        user,
+        policy.periodId ?? undefined,
+      );
 
     policy.status = PolicyStatus.AWAITING_PARTNER_PAYMENT;
     policy.price = amountUzs;
