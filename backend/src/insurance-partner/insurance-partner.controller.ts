@@ -9,7 +9,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AsiaInsuranceClientService } from './asia-insurance-client.service';
 import { AsiaInsuranceApiError } from './asia-insurance-api.error';
 import {
+  PERIOD_NAME_UZ,
   RELATIVE_NAME_UZ,
+  translatePeriodItems,
   translateRelativeItems,
 } from './reference-translations';
 
@@ -38,7 +40,10 @@ export class InsurancePartnerController {
   })
   async getPeriods() {
     try {
-      return await this.asiaInsuranceClient.getPeriods();
+      // Asia Insurance's /get-period only returns Russian names (e.g.
+      // "Один год") — see reference-translations.ts's module comment.
+      const { items } = await this.asiaInsuranceClient.getPeriods();
+      return { items: translatePeriodItems(items, PERIOD_NAME_UZ) };
     } catch (err) {
       if (err instanceof AsiaInsuranceApiError && err.httpStatus === 0) {
         throw new ServiceUnavailableException({

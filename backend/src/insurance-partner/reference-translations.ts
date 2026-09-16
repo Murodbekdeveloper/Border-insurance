@@ -268,6 +268,15 @@ export const FOREIGN_VEHICLE_DURATION_NAME_UZ: Record<number, string> = {
   13: '1 yil',
 };
 
+// GET /insurance-partner/periods (osago_v3's /get-period) — domestic
+// policy duration. CONFIRMED 2026-09-16 against the live endpoint: only
+// "Один год"/"Шесть месяцев" observed so far (period ids 1/2) — any other
+// id falls back to their raw Russian name, same as every other map here.
+export const PERIOD_NAME_UZ: Record<number, string> = {
+  1: '1 yil',
+  2: '6 oy',
+};
+
 // GET /insurance-partner/relatives (osago_v3's /get-relative) — driver's
 // degree of kinship to the vehicle owner.
 export const RELATIVE_NAME_UZ: Record<number, string> = {
@@ -298,6 +307,15 @@ export function translateRelativeItems<
 >(items: T[], map: Record<number, string>): T[] {
   return items.map((item) => {
     const translated = map[item.relative];
+    return translated ? { ...item, name: translated } : item;
+  });
+}
+
+export function translatePeriodItems<
+  T extends { period: number; name: string },
+>(items: T[], map: Record<number, string>): T[] {
+  return items.map((item) => {
+    const translated = map[item.period];
     return translated ? { ...item, name: translated } : item;
   });
 }
