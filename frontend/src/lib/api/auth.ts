@@ -14,10 +14,13 @@ interface AuthResult {
 // emailed code is confirmed via verifyEmail(), so nothing is persisted here.
 export async function register(data: RegisterFormData): Promise<{ email: string; message: string }> {
   try {
+    // Phone is optional — an untouched "+998" prefix or empty value means
+    // the user skipped it, so it shouldn't be sent as if it were provided.
+    const phone = data.phone && data.phone !== '+998' ? data.phone : undefined;
     const { data: result } = await apiClient.post<{ email: string; message: string }>('/auth/register', {
       fullName: data.fullName,
       email: data.email,
-      phone: data.phone,
+      phone,
       password: data.password,
     });
     return result;
@@ -111,7 +114,7 @@ export async function me(): Promise<User> {
 
 export async function updateProfile(data: {
   fullName: string;
-  phone: string;
+  phone?: string;
   passportSeries?: string;
   passportNumber?: string;
   birthDate?: string;
@@ -130,5 +133,26 @@ export async function changePassword(data: { currentPassword?: string; newPasswo
     return result;
   } catch (err) {
     throwApiError(err, 'Parolni saqlashda xatolik yuz berdi');
+  }
+}
+
+// Guest (yoki telefon bilan ro'yxatdan o'tgan) hisoblar profildan haqiqiy
+// email qo'shishi mumkin — yangi manzilga tasdiqlash kodi yuboriladi, u
+// email hali tasdiqlanmaguncha confirmEmailChange() orqali tekshirilmaguncha
+// hisobning asosiy emaili o'zgarmaydi.
+export async function requestEmailChange(email: string): Promise<void> {
+  try {
+    await apiClient.post('/users/me/email/request', { email });
+  } catch (err) {
+    throwApiError(err, 'Kod yuborishda xatolik yuz berdi');
+  }
+}
+
+export async function confirmEmailChange(code: string): Promise<User> {
+  try {
+    const { data } = await apiClient.post<User>('/users/me/email/confirm', { code });
+    return data;
+  } catch (err) {
+    throwApiError(err, 'Kodni tasdiqlashda xatolik yuz berdi');
   }
 }

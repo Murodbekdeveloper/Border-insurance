@@ -1,5 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, Matches, MinLength } from 'class-validator';
+import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
+} from 'class-validator';
 
 const PHONE_REGEX = /^\+998[0-9]{9}$/;
 
@@ -13,11 +19,12 @@ export class RegisterDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ example: '+998901234567' })
+  @ApiPropertyOptional({ example: '+998901234567' })
+  @IsOptional()
   @Matches(PHONE_REGEX, {
     message: 'phone must be in +998XXXXXXXXX format',
   })
-  phone: string;
+  phone?: string;
 
   @ApiProperty({ example: 'password123', minLength: 6 })
   @IsString()

@@ -7,7 +7,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { randomInt } from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 import * as appleSignin from 'apple-signin-auth';
 import { UsersService } from '../users/users.service';
@@ -19,6 +18,7 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { GoogleProfile } from './strategies/google.strategy';
 import { renderVerificationCodeEmail } from '../notifications/email-template';
+import { generateVerificationCode } from '../common/verification-code';
 
 export interface AppleProfile {
   appleId: string;
@@ -39,10 +39,6 @@ const VERIFICATION_CODE_TTL_MS = 15 * 60 * 1000;
 // route the user to the verification screen instead of showing a plain
 // error toast.
 const EMAIL_NOT_VERIFIED_CODE = 'EMAIL_NOT_VERIFIED';
-
-function generateVerificationCode(): string {
-  return String(randomInt(0, 1_000_000)).padStart(6, '0');
-}
 
 @Injectable()
 export class AuthService {

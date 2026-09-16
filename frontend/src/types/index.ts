@@ -21,6 +21,7 @@ export interface User {
   id: string;
   fullName: string;
   email: string;
+  pendingEmail?: string | null;
   phone?: string;
   residentType?: ResidentType;
   passportSeries?: string | null;
@@ -30,6 +31,7 @@ export interface User {
   googleId?: string | null;
   hasPassword?: boolean;
   isActive?: boolean;
+  isGuest?: boolean;
   createdAt: string;
 }
 

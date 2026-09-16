@@ -9,6 +9,7 @@ function buildUser(overrides: Partial<User> = {}): User {
     id: 'user-1',
     fullName: 'Aziz Karimov',
     email: 'aziz@example.com',
+    pendingEmail: null,
     passwordHash: null,
     googleId: null,
     appleId: null,

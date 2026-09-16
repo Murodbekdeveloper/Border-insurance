@@ -7,15 +7,26 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, MoreThanOrEqual, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
+import { EmailService } from '../notifications/email.service';
+import { renderEmailChangeCodeEmail } from '../notifications/email-template';
+import { generateVerificationCode } from '../common/verification-code';
 import { ResidentType, User } from './entities/user.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 const PASSWORD_SALT_ROUNDS = 10;
+const EMAIL_CHANGE_CODE_TTL_MS = 15 * 60 * 1000;
+
+function isUniqueViolation(err: unknown): boolean {
+  const code =
+    (err as { code?: string; driverError?: { code?: string } })?.code ??
+    (err as { driverError?: { code?: string } })?.driverError?.code;
+  return code === '23505';
+}
 
 interface CreateLocalUserInput {
   fullName: string;
   email: string;
-  phone: string;
+  phone?: string;
   passwordHash: string;
   isEmailVerified: boolean;
   emailVerificationCode: string;
@@ -39,6 +50,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    private readonly emailService: EmailService,
   ) {}
 
   findById(id: string): Promise<User | null> {
@@ -104,6 +116,92 @@ export class UsersService {
         emailVerificationCodeExpiresAt: expiresAt,
       },
     );
+  }
+
+  private findByIdWithPendingEmail(id: string): Promise<User | null> {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect([
+        'user.emailVerificationCode',
+        'user.emailVerificationCodeExpiresAt',
+      ])
+      .where('user.id = :id', { id })
+      .getOne();
+  }
+
+  // Lets a guest or phone-only account add/replace their email from the
+  // profile page — stores it as pendingEmail until confirmEmailChange()
+  // checks the emailed code, so the confirmed `email` column (used for
+  // login) never changes to something not yet proven deliverable.
+  async requestEmailChange(id: string, newEmail: string): Promise<void> {
+    const existing = await this.findByEmail(newEmail);
+    if (existing) {
+      throw new ConflictException(
+        "Bu email manzili bilan foydalanuvchi allaqachon ro'yxatdan o'tgan",
+      );
+    }
+    const code = generateVerificationCode();
+    await this.usersRepository.update(
+      { id },
+      {
+        pendingEmail: newEmail,
+        emailVerificationCode: code,
+        emailVerificationCodeExpiresAt: new Date(
+          Date.now() + EMAIL_CHANGE_CODE_TTL_MS,
+        ),
+      },
+    );
+    await this.emailService.send({
+      to: newEmail,
+      subject: 'OSAGO — emailni tasdiqlash kodi',
+      html: renderEmailChangeCodeEmail(code),
+    });
+  }
+
+  async confirmEmailChange(id: string, code: string): Promise<User> {
+    const user = await this.findByIdWithPendingEmail(id);
+    if (
+      !user ||
+      !user.pendingEmail ||
+      !user.emailVerificationCode ||
+      !user.emailVerificationCodeExpiresAt
+    ) {
+      throw new BadRequestException(
+        "Tasdiqlash kodi so'ralmagan yoki eskirgan",
+      );
+    }
+    if (user.emailVerificationCodeExpiresAt < new Date()) {
+      throw new BadRequestException(
+        "Tasdiqlash kodi muddati tugagan — yangi kod so'rang",
+      );
+    }
+    if (user.emailVerificationCode !== code) {
+      throw new BadRequestException("Tasdiqlash kodi noto'g'ri");
+    }
+    try {
+      await this.usersRepository.update(
+        { id },
+        {
+          email: user.pendingEmail,
+          pendingEmail: null,
+          isEmailVerified: true,
+          emailVerificationCode: null,
+          emailVerificationCodeExpiresAt: null,
+        },
+      );
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        throw new ConflictException(
+          "Bu email manzili bilan foydalanuvchi allaqachon ro'yxatdan o'tgan",
+        );
+      }
+      throw err;
+    }
+    const updated = await this.findById(id);
+    if (!updated) {
+      throw new ConflictException('Foydalanuvchi topilmadi');
+    }
+    return updated;
   }
 
   private findByIdWithPassword(id: string): Promise<User | null> {

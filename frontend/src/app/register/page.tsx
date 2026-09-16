@@ -97,7 +97,7 @@ export default function RegisterPage() {
             {...registerField('email')}
           />
           <Input
-            label="Telefon raqami"
+            label="Telefon raqami (ixtiyoriy)"
             placeholder="+998901234567"
             inputMode="numeric"
             error={errors.phone?.message}

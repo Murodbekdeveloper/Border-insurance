@@ -12,11 +12,18 @@ export const loginSchema = z.object({
 });
 export type LoginFormData = z.infer<typeof loginSchema>;
 
+// Faqat email majburiy — telefon ixtiyoriy, shuning uchun bo'sh yoki hali
+// to'ldirilmagan "+998" prefiksi ham qabul qilinadi; kiritilgan bo'lsa,
+// to'liq formatga mos kelishi kerak.
 export const registerSchema = z
   .object({
     fullName: z.string().min(3, 'To\'liq ism-sharif kiritilishi shart'),
     email: z.string().min(1, 'Email kiritilishi shart').email('Email formati noto\'g\'ri'),
-    phone: z.string().regex(phoneRegex, 'Telefon raqami +998XXXXXXXXX formatida bo\'lishi kerak'),
+    phone: z
+      .string()
+      .refine((val) => !val || val === '+998' || phoneRegex.test(val), {
+        message: 'Telefon raqami +998XXXXXXXXX formatida bo\'lishi kerak',
+      }),
     password: z.string().min(6, 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak'),
     confirmPassword: z.string().min(1, 'Parolni tasdiqlang'),
   })
@@ -154,7 +161,12 @@ export type DriverRestrictionFormData = z.infer<ReturnType<typeof getDriverRestr
 // qo'yilsa, ulanganda foydalanuvchi qayta so'ralmaydi.
 export const updateProfileSchema = z.object({
   fullName: z.string().min(3, 'To\'liq ism-sharif kiritilishi shart'),
-  phone: z.string().regex(phoneRegex, 'Telefon raqami +998XXXXXXXXX formatida bo\'lishi kerak'),
+  phone: z
+    .string()
+    .optional()
+    .refine((val) => !val || phoneRegex.test(val), {
+      message: 'Telefon raqami +998XXXXXXXXX formatida bo\'lishi kerak',
+    }),
   passportSeries: z.string().max(10, 'Ko\'pi bilan 10 ta belgi').optional().or(z.literal('')),
   passportNumber: z.string().max(20, 'Ko\'pi bilan 20 ta belgi').optional().or(z.literal('')),
   birthDate: z

@@ -11,7 +11,7 @@ import {
 } from '@/lib/validation/schemas';
 import { Card as CardModel, CardType, InsurancePolicy, User, Vehicle } from '@/types';
 import { deleteCard, listCards } from '@/lib/api/cards';
-import { changePassword, updateProfile } from '@/lib/api/auth';
+import { changePassword, confirmEmailChange, requestEmailChange, updateProfile } from '@/lib/api/auth';
 import { listVehicles } from '@/lib/api/vehicles';
 import { listPolicies } from '@/lib/api/policies';
 import { useAuthStore } from '@/store/authStore';
@@ -107,7 +107,7 @@ function PersonalInfoCard({ user }: { user: User }) {
       // hisoblanishi kerak (maydonlar hozircha ixtiyoriy).
       const updated = await updateProfile({
         fullName: data.fullName,
-        phone: data.phone,
+        phone: data.phone || undefined,
         passportSeries: data.passportSeries || undefined,
         passportNumber: data.passportNumber || undefined,
         birthDate: data.birthDate || undefined,
@@ -169,7 +169,7 @@ function PersonalInfoCard({ user }: { user: User }) {
       {editing ? (
         <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4 border-t border-slate-100 pt-5 dark:border-slate-800">
           <Input label="F.I.O." error={errors.fullName?.message} {...register('fullName')} />
-          <Input label="Telefon" placeholder="+998901234567" error={errors.phone?.message} {...register('phone')} />
+          <Input label="Telefon (ixtiyoriy)" placeholder="+998901234567" error={errors.phone?.message} {...register('phone')} />
 
           <div>
             <p className="mb-3 text-xs font-semibold tracking-wide text-slate-400 uppercase">Pasport ma&apos;lumotlari</p>
@@ -223,6 +223,96 @@ function PersonalInfoCard({ user }: { user: User }) {
             <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{user.birthDate ?? '-'}</dd>
           </div>
         </dl>
+      )}
+    </div>
+  );
+}
+
+// Faqat mehmon hisoblar uchun — ularning emaili haqiqiy emas
+// (guest.<uuid>@guest.borderinsurance.uz), shuning uchun bu yerda
+// haqiqiy email qo'shish va tasdiqlash imkoniyati beriladi.
+function EmailVerificationCard({ user }: { user: User }) {
+  const updateUser = useAuthStore((s) => s.updateUser);
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  if (!user.isGuest) return null;
+
+  const handleSendCode = async () => {
+    if (!email.trim()) {
+      toast.error('Email kiriting');
+      return;
+    }
+    setIsSending(true);
+    try {
+      await requestEmailChange(email.trim());
+      toast.success('Tasdiqlash kodi emailingizga yuborildi');
+      setCodeSent(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Kod yuborishda xatolik yuz berdi');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!/^\d{6}$/.test(code)) {
+      toast.error('Kod 6 ta raqamdan iborat bo\'lishi kerak');
+      return;
+    }
+    setIsConfirming(true);
+    try {
+      const updated = await confirmEmailChange(code);
+      updateUser(updated);
+      toast.success('Email tasdiqlandi');
+      setCodeSent(false);
+      setEmail('');
+      setCode('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Kodni tasdiqlashda xatolik yuz berdi');
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  return (
+    <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Email qo&apos;shish</h2>
+      <p className="mt-1 text-xs text-slate-400">
+        Mehmon sifatida kirgansiz — hisobingizni saqlab qolish uchun haqiqiy email qo&apos;shib, tasdiqlang.
+      </p>
+
+      {!codeSent ? (
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <Input
+            placeholder="email@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="flex-1"
+          />
+          <Button type="button" variant="primary" isLoading={isSending} onClick={handleSendCode} className="sm:px-6">
+            Kod yuborish
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <Input
+            placeholder="6 xonali kod"
+            inputMode="numeric"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className="flex-1"
+          />
+          <Button type="button" variant="primary" isLoading={isConfirming} onClick={handleConfirm} className="sm:px-6">
+            Tasdiqlash
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => setCodeSent(false)}>
+            Emailni o&apos;zgartirish
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -426,6 +516,7 @@ function ProfileContent({ user }: { user: User }) {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
+        <EmailVerificationCard user={user} />
         <PersonalInfoCard user={user} />
         <PasswordCard user={user} />
         <VehiclesCard />

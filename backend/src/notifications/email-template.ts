@@ -35,3 +35,13 @@ export function renderVerificationCodeEmail(code: string): string {
     <p style="margin:0;color:${TEXT_MUTED};font-size:13px;">Kod 15 daqiqa davomida amal qiladi. Agar bu so'rovni siz bermagan bo'lsangiz, xabarni e'tiborsiz qoldiring.</p>
   `);
 }
+
+export function renderEmailChangeCodeEmail(code: string): string {
+  return renderEmailLayout(`
+    <p style="margin:0 0 8px;">Profilingizga ushbu emailni qo'shish/tasdiqlash uchun kod:</p>
+    <div style="margin:20px 0;text-align:center;background-color:${BG};border:1px dashed ${BRAND_ORANGE};border-radius:12px;padding:20px;">
+      <span style="font-size:36px;font-weight:700;letter-spacing:0.3em;color:${TEXT_DARK};">${code}</span>
+    </div>
+    <p style="margin:0;color:${TEXT_MUTED};font-size:13px;">Kod 15 daqiqa davomida amal qiladi. Agar bu so'rovni siz bermagan bo'lsangiz, xabarni e'tiborsiz qoldiring.</p>
+  `);
+}

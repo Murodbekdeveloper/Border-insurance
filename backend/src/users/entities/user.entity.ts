@@ -26,6 +26,13 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  // Set while a new email is awaiting its verification code (see
+  // UsersService.requestEmailChange/confirmEmailChange) — lets a guest or
+  // phone-only account add a real, verified email from the profile page
+  // without touching the confirmed `email` column until the code checks out.
+  @Column({ type: 'varchar', nullable: true })
+  pendingEmail: string | null;
+
   @Exclude()
   @Column({ type: 'varchar', nullable: true, select: false })
   passwordHash: string | null;
