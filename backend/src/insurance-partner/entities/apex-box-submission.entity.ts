@@ -12,8 +12,9 @@ import { InsurancePolicy } from '../../policies/entities/insurance-policy.entity
 // One row per policy submitted to Apex_Box (Asia Insurance's universal,
 // foreign-citizen/vehicle-capable OSAGO API — POST /osago). Kept separate
 // from PartnerSubmission (osago_v3) since the two APIs' responses have
-// different shapes: Apex_Box returns a single contract_id/uuid plus two
-// payment links (click_link, payme_link) rather than one payall_url.
+// different shapes — though as of 2026-09-17 CreatePolicyResponse also
+// carries a transaction_uuid/commission/premium/payall_url, mirroring
+// PartnerSubmission's equivalent columns below.
 @Entity('apex_box_submissions')
 export class ApexBoxSubmission {
   @PrimaryGeneratedColumn('uuid')
@@ -48,6 +49,34 @@ export class ApexBoxSubmission {
 
   @Column({ type: 'varchar', nullable: true })
   paymeLink: string | null;
+
+  // CreatePolicyResponse.payall_url — same "universal" link as osago_v3's
+  // PartnerSubmission.payallUrl; PoliciesService.submitToPartner() forwards
+  // whichever one is set, and the frontend already prefers payallUrl over
+  // click/payme when present.
+  @Column({ type: 'varchar', nullable: true })
+  payallUrl: string | null;
+
+  // CreatePolicyResponse.transaction_uuid — lets PartnerTransactionsController
+  // (the regulator/NAPP reconciliation endpoint) resolve a foreign-vehicle
+  // Apex_Box policy too, not just osago_v3 ones. Distinct from `uuid` above
+  // ("ID анкеты" in the Guaranteed Payments Fund) even though Asia
+  // Insurance's own examples show them equal so far — store separately
+  // rather than assume they always match.
+  @Column({ type: 'varchar', nullable: true })
+  transactionId: string | null;
+
+  // CreatePolicyResponse.commission.
+  @Column({ type: 'int', nullable: true })
+  commissionAmount: number | null;
+
+  // CreatePolicyResponse.premium — the partner's own authoritative premium,
+  // now returned directly instead of only via a prior /osago_calculation
+  // call. Kept alongside (not replacing) the calc-based value already used
+  // to build the CreatePolicyRequest itself, since that call still happens
+  // first and its result is what's actually submitted as cost.insurancePremium.
+  @Column({ type: 'int', nullable: true })
+  insurancePremium: number | null;
 
   // GetIssuedPolicyResponse.policy_no — filled in once PartnerPolicySyncCron
   // polls Apex_Box's GET /policy and finds the contract paid (Apex_Box has

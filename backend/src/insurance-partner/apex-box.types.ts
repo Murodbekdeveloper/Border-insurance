@@ -190,6 +190,14 @@ export interface CreatePolicyResponse {
   uuid: string;
   click_link: string;
   payme_link: string;
+  // CONFIRMED 2026-09-17: added alongside click_link/payme_link — Apex_Box
+  // now also returns a single "universal" link (osago_v3's payall_url
+  // equivalent), plus the premium/commission it previously only exposed
+  // via a separate /osago_calculation call.
+  transaction_uuid: string;
+  commission: number;
+  premium: number;
+  payall_url: string;
 }
 
 export interface CalculatePremiumRequest {

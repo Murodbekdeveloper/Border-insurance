@@ -10,6 +10,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InsurancePartnerService } from './insurance-partner.service';
+import { ApexBoxService } from './apex-box.service';
 import { PartnerApiKeyGuard } from './guards/partner-api-key.guard';
 import { GetTransactionDto } from './dto/get-transaction.dto';
 
@@ -29,6 +30,7 @@ import { GetTransactionDto } from './dto/get-transaction.dto';
 export class PartnerTransactionsController {
   constructor(
     private readonly insurancePartnerService: InsurancePartnerService,
+    private readonly apexBoxService: ApexBoxService,
   ) {}
 
   @Post()
@@ -42,17 +44,32 @@ export class PartnerTransactionsController {
       "Regulyator uchun: transactionId bo'yicha polis uuid/premium/komissiyani qaytarish",
   })
   async getByTransactionId(@Body() dto: GetTransactionDto) {
+    // Checked in the same order the policy could have gone: osago_v3
+    // (Uzbek-registered vehicles) first, then Apex_Box (foreign vehicles/
+    // citizens) — the two flows' transactionId values are drawn from
+    // disjoint uuid spaces in practice, so this can't collide.
     const submission = await this.insurancePartnerService.findByTransactionId(
       dto.transactionId,
     );
-    if (!submission || !submission.partnerPolicyUuid) {
-      throw new NotFoundException('Bunday transactionId topilmadi');
+    if (submission?.partnerPolicyUuid) {
+      return {
+        uuid: submission.partnerPolicyUuid,
+        insurancePremium: submission.insurancePremium,
+        comission: submission.commissionAmount,
+      };
     }
 
-    return {
-      uuid: submission.partnerPolicyUuid,
-      insurancePremium: submission.insurancePremium,
-      comission: submission.commissionAmount,
-    };
+    const apexBoxSubmission = await this.apexBoxService.findByTransactionId(
+      dto.transactionId,
+    );
+    if (apexBoxSubmission?.uuid) {
+      return {
+        uuid: apexBoxSubmission.uuid,
+        insurancePremium: apexBoxSubmission.insurancePremium,
+        comission: apexBoxSubmission.commissionAmount,
+      };
+    }
+
+    throw new NotFoundException('Bunday transactionId topilmadi');
   }
 }

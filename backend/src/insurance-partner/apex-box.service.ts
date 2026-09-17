@@ -87,6 +87,7 @@ function parseValidDateRange(
 export interface ApexBoxSubmitResult {
   clickLink: string;
   paymeLink: string;
+  payallUrl?: string;
   amountUzs: number;
 }
 
@@ -120,6 +121,7 @@ export class ApexBoxService {
       return {
         clickLink: submission.clickLink as string,
         paymeLink: submission.paymeLink as string,
+        payallUrl: submission.payallUrl ?? undefined,
         amountUzs: policy.price,
       };
     }
@@ -132,16 +134,15 @@ export class ApexBoxService {
       });
     }
 
-    // Apex_Box's CreatePolicyResponse carries no premium field at all
-    // (unlike osago_v3's SavePolicyResponse.amount_uzs) — the only way to
-    // get their authoritative premium is /osago_calculation beforehand, the
-    // same two-step pattern InsurancePartnerService.submitPolicy() uses.
-    // Without this, cost.insurancePremium below would just be our own
-    // rough local PricingService estimate (a flat 10% foreign-vehicle
-    // surcharge on the full-year base price, blind to the selected
-    // foreignVehicleId duration) submitted to Apex_Box as if it were the
-    // real premium — wrong for anything shorter than a year, and the
-    // number actually shown to and charged from the customer.
+    // /osago_calculation has to happen before CreatePolicyRequest either
+    // way, since cost.insurancePremium/sumInsured are required *inputs* to
+    // /osago (CreatePolicyResponse.premium below only confirms it after the
+    // fact — it can't replace this call). Without this, those fields would
+    // just be our own rough local PricingService estimate (a flat 10%
+    // foreign-vehicle surcharge on the full-year base price, blind to the
+    // selected foreignVehicleId duration) submitted to Apex_Box as if it
+    // were the real premium — wrong for anything shorter than a year, and
+    // the number actually shown to and charged from the customer.
     const calc = await this.apexBoxClient.calculatePremium(
       this.buildCalculatePremiumRequest(policy, user, foreignPolicyDurationId),
     );
@@ -218,13 +219,28 @@ export class ApexBoxService {
     submission.uuid = result.uuid;
     submission.clickLink = result.click_link;
     submission.paymeLink = result.payme_link;
+    submission.payallUrl = result.payall_url;
+    submission.transactionId = result.transaction_uuid;
+    submission.commissionAmount = result.commission;
+    submission.insurancePremium = result.premium;
     await this.submissionsRepository.save(submission);
 
     return {
       clickLink: result.click_link,
       paymeLink: result.payme_link,
+      payallUrl: result.payall_url,
       amountUzs: insurancePremium,
     };
+  }
+
+  // Mirrors InsurancePartnerService.findByTransactionId() for the Apex_Box
+  // (foreign-vehicle) flow — used by PartnerTransactionsController so the
+  // regulator (NAPP/ЕАИС «ЕРСП») can reconcile these policies too, not just
+  // osago_v3 ones.
+  async findByTransactionId(
+    transactionId: string,
+  ): Promise<ApexBoxSubmission | null> {
+    return this.submissionsRepository.findOne({ where: { transactionId } });
   }
 
   // Used by PartnerPolicySyncCron — mirrors

@@ -186,7 +186,7 @@ export class PoliciesService {
       if (!policy.foreignPolicyDurationId) {
         throw new ConflictException("Sug'urta muddati tanlanmagan");
       }
-      const { clickLink, paymeLink, amountUzs } =
+      const { clickLink, paymeLink, payallUrl, amountUzs } =
         await this.apexBoxService.submitPolicy(
           policy,
           user,
@@ -195,7 +195,7 @@ export class PoliciesService {
       policy.status = PolicyStatus.AWAITING_PARTNER_PAYMENT;
       policy.price = amountUzs;
       await this.policiesRepository.save(policy);
-      return { clickLink, paymeLink };
+      return { clickLink, paymeLink, payallUrl };
     }
 
     const { payallUrl, amountUzs } =
