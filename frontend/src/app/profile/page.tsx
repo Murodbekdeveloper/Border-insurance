@@ -9,8 +9,7 @@ import {
   UpdateProfileFormData,
   updateProfileSchema,
 } from '@/lib/validation/schemas';
-import { Card as CardModel, CardType, InsurancePolicy, User, Vehicle } from '@/types';
-import { deleteCard, listCards } from '@/lib/api/cards';
+import { InsurancePolicy, User, Vehicle } from '@/types';
 import { changePassword, confirmEmailChange, requestEmailChange, updateProfile } from '@/lib/api/auth';
 import { listVehicles } from '@/lib/api/vehicles';
 import { listPolicies } from '@/lib/api/policies';
@@ -27,12 +26,6 @@ import { PasswordInput } from '@/components/ui/PasswordInput';
 import Link from 'next/link';
 
 const WEIGHT_LABEL: Record<string, string> = { yengil: 'Yengil', "og'ir": "Og'ir" };
-const CARD_TYPE_LABELS: Record<CardType, string> = {
-  visa: 'Visa',
-  mastercard: 'Mastercard',
-  uzcard: 'Uzcard',
-  humo: 'Humo',
-};
 
 function ExpiryBanner({ policies }: { policies: InsurancePolicy[] }) {
   const now = new Date();
@@ -416,53 +409,6 @@ function VehiclesCard() {
   );
 }
 
-function CardsCard() {
-  const [cards, setCards] = useState<CardModel[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        setCards(await listCards());
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Kartalarni olishda xatolik yuz berdi');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  const handleRemove = async (cardId: string) => {
-    try {
-      await deleteCard(cardId);
-      setCards((prev) => prev.filter((c) => c.id !== cardId));
-      toast.success('Karta o\'chirildi');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Kartani o\'chirishda xatolik yuz berdi');
-    }
-  };
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Saqlangan kartalar</h2>
-      {loading && <p className="text-sm text-slate-500">Yuklanmoqda...</p>}
-      {!loading && cards.length === 0 && <p className="text-sm text-slate-400">Saqlangan karta yo&apos;q</p>}
-      <div className="flex flex-col gap-2">
-        {cards.map((card) => (
-          <div key={card.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800">
-            <span className="text-sm text-slate-700 dark:text-slate-300">
-              {CARD_TYPE_LABELS[card.cardType]} · **** **** **** {card.maskedNumber}
-            </span>
-            <Button variant="ghost" className="px-3 py-1.5 text-xs" onClick={() => handleRemove(card.id)}>
-              O&apos;chirish
-            </Button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function ConnectedAccountsCard({ currentUserId }: { currentUserId: string }) {
   const accounts = useAccountsStore((s) => s.accounts);
   const removeAccount = useAccountsStore((s) => s.removeAccount);
@@ -520,7 +466,6 @@ function ProfileContent({ user }: { user: User }) {
         <PersonalInfoCard user={user} />
         <PasswordCard user={user} />
         <VehiclesCard />
-        <CardsCard />
         <ConnectedAccountsCard currentUserId={user.id} />
       </div>
     </>

@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { detectCardType } from '@/lib/utils';
 
 const phoneRegex = /^\+998[0-9]{9}$/;
 const alphanumericRegex = /^[A-Za-z0-9]+$/;
@@ -222,38 +221,3 @@ export function getChangePasswordSchema(requireCurrentPassword: boolean) {
     });
 }
 export type ChangePasswordFormData = z.infer<ReturnType<typeof getChangePasswordSchema>>;
-
-// Uzcard/Humo cards have no CVV printed on them — only Visa/Mastercard do.
-function cardTypeRequiresCvv(cardNumberDigits: string): boolean {
-  const type = detectCardType(cardNumberDigits);
-  return type === 'visa' || type === 'mastercard';
-}
-
-export const cardSchema = z
-  .object({
-    cardHolderName: z.string().min(3, 'Karta egasining ismini kiriting'),
-    cardNumber: z
-      .string()
-      .transform((val) => val.replace(/\D/g, ''))
-      .refine((val) => val.length === 16, 'Karta raqami 16 ta raqamdan iborat bo\'lishi kerak')
-      .refine((val) => detectCardType(val) !== null, 'Karta raqami noto\'g\'ri — Visa, Mastercard, Uzcard yoki Humo kartasini kiriting'),
-    expDate: z
-      .string()
-      .regex(/^(0[1-9]|1[0-2])\/[0-9]{2}$/, 'Amal qilish muddati OY/YIL formatida bo\'lishi kerak')
-      .refine((val) => {
-        const [month, year] = val.split('/').map(Number);
-        const expiry = new Date(2000 + year, month, 0);
-        return expiry >= new Date();
-      }, 'Karta muddati tugagan'),
-    cvv: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (cardTypeRequiresCvv(data.cardNumber) && !/^[0-9]{3}$/.test(data.cvv ?? '')) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'CVV 3 ta raqamdan iborat bo\'lishi kerak',
-        path: ['cvv'],
-      });
-    }
-  });
-export type CardFormData = z.infer<typeof cardSchema>;

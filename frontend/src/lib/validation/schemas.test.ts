@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardSchema, driverRestrictionSchema, loginSchema, registerSchema, vehicleSchema } from './schemas';
+import { driverRestrictionSchema, loginSchema, registerSchema, vehicleSchema } from './schemas';
 
 describe('loginSchema', () => {
   it('accepts a valid email/password pair', () => {
@@ -119,33 +119,5 @@ describe('driverRestrictionSchema', () => {
       drivers: [{ ...validDriver, passportSeries: 'ABC' }],
     });
     expect(result.success).toBe(false);
-  });
-});
-
-describe('cardSchema', () => {
-  const base = { cardHolderName: 'ALI VALIYEV', cardNumber: '4111111111111111', expDate: '12/30', cvv: '123' };
-
-  it('accepts a valid Visa card', () => {
-    expect(cardSchema.safeParse(base).success).toBe(true);
-  });
-
-  it('accepts a valid Mastercard number', () => {
-    expect(cardSchema.safeParse({ ...base, cardNumber: '5111111111111111' }).success).toBe(true);
-  });
-
-  it('rejects a card number that is neither Visa nor Mastercard', () => {
-    expect(cardSchema.safeParse({ ...base, cardNumber: '6111111111111111' }).success).toBe(false);
-  });
-
-  it('rejects a card number with the wrong digit count', () => {
-    expect(cardSchema.safeParse({ ...base, cardNumber: '41111111' }).success).toBe(false);
-  });
-
-  it('rejects an expired card', () => {
-    expect(cardSchema.safeParse({ ...base, expDate: '01/20' }).success).toBe(false);
-  });
-
-  it('rejects a CVV that is not 3 digits', () => {
-    expect(cardSchema.safeParse({ ...base, cvv: '12' }).success).toBe(false);
   });
 });
