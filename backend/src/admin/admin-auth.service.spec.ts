@@ -15,7 +15,7 @@ function buildAdmin(overrides: Partial<Admin> = {}): Admin {
   return {
     id: 'admin-1',
     fullName: 'Murodbek',
-    email: 'developermurodbek@gmail.com',
+    email: 'admin@example.test',
     passwordHash: '',
     role: AdminRole.SUPERADMIN,
     isActive: true,
@@ -105,22 +105,22 @@ describe('AdminAuthService', () => {
 
       await expect(
         service.login({
-          email: 'developermurodbek@gmail.com',
+          email: 'admin@example.test',
           password: 'wrong-password',
         }),
       ).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
     it('returns the admin and tokens for a correct password', async () => {
-      const hash = await bcrypt.hash('20061214develop.M', 10);
+      const hash = await bcrypt.hash('test-admin-password123', 10);
       queryBuilder.getOne.mockResolvedValue(buildAdmin({ passwordHash: hash }));
 
       const result = await service.login({
-        email: 'developermurodbek@gmail.com',
-        password: '20061214develop.M',
+        email: 'admin@example.test',
+        password: 'test-admin-password123',
       });
 
-      expect(result.admin.email).toBe('developermurodbek@gmail.com');
+      expect(result.admin.email).toBe('admin@example.test');
       expect(result.accessToken).toEqual(expect.any(String));
       expect(result.refreshToken).toEqual(expect.any(String));
       expect(result.accessToken).not.toBe(result.refreshToken);
@@ -137,14 +137,14 @@ describe('AdminAuthService', () => {
         false,
       );
 
-      const hash = await bcrypt.hash('20061214develop.M', 10);
+      const hash = await bcrypt.hash('test-admin-password123', 10);
       queryBuilder.getOne.mockResolvedValue(buildAdmin({ passwordHash: hash }));
       await service.login(
-        { email: 'developermurodbek@gmail.com', password: '20061214develop.M' },
+        { email: 'admin@example.test', password: 'test-admin-password123' },
         '127.0.0.1',
       );
       expect(loginAttemptsService.record).toHaveBeenCalledWith(
-        'developermurodbek@gmail.com',
+        'admin@example.test',
         '127.0.0.1',
         true,
       );
@@ -152,13 +152,13 @@ describe('AdminAuthService', () => {
 
     it('locks out after too many recent failures, even with the right password', async () => {
       loginAttemptsService.countRecentFailures.mockResolvedValue(5);
-      const hash = await bcrypt.hash('20061214develop.M', 10);
+      const hash = await bcrypt.hash('test-admin-password123', 10);
       queryBuilder.getOne.mockResolvedValue(buildAdmin({ passwordHash: hash }));
 
       await expect(
         service.login({
-          email: 'developermurodbek@gmail.com',
-          password: '20061214develop.M',
+          email: 'admin@example.test',
+          password: 'test-admin-password123',
         }),
       ).rejects.toBeInstanceOf(UnauthorizedException);
       expect(loginAttemptsService.record).not.toHaveBeenCalled();
@@ -201,7 +201,7 @@ describe('AdminAuthService', () => {
       await expect(
         service.createAdmin({
           fullName: 'New Admin',
-          email: 'developermurodbek@gmail.com',
+          email: 'admin@example.test',
           password: 'password123',
         }),
       ).rejects.toBeInstanceOf(ConflictException);

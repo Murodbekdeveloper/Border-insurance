@@ -82,13 +82,27 @@ export class AsiaInsuranceClientService {
     });
   }
 
-  // Path unconfirmed for both production and sandbox — see the comment on
-  // VehicleLookupRequest.
-  lookupVehicle(request: VehicleLookupRequest): Promise<VehicleLookupResponse> {
-    return this.post<VehicleLookupRequest, VehicleLookupResponse>(
-      '/get-vehicle',
-      request,
-      { sandboxPrefixed: true },
+  // CONFIRMED 2026-09-21 against the sandbox host, both with and without
+  // the /sandbox prefix: both return Oracle ORDS's own "NotFound" body
+  // (code: "NotFound", type: tag:oracle.com,2020:error/NotFound) — the
+  // signature this codebase already treats elsewhere as "route doesn't
+  // exist at all" (vs. a 401 meaning the route exists but auth/payload was
+  // rejected, or a real business-logic "not found" from Asia Insurance's
+  // own app layer). So /get-vehicle isn't just unconfirmed, it's confirmed
+  // absent — Asia Insurance has never published this endpoint (osago3.yaml
+  // only documents get-calc-osago/save-policy/get-policy/get-period/
+  // get-relative). Short-circuit instead of making a network call that can
+  // only ever 404: VehiclesController already treats any
+  // AsiaInsuranceApiError as "not found" and falls back to manual entry,
+  // so this is behavior-neutral for users — just faster, and honest in
+  // logs/monitoring instead of looking like a flaky call. Revert to the
+  // real request once Asia Insurance confirms an actual path.
+  lookupVehicle(_request: VehicleLookupRequest): Promise<VehicleLookupResponse> {
+    return Promise.reject(
+      new AsiaInsuranceApiError(
+        404,
+        "Asia Insurance /get-vehicle: rasman tasdiqlangan endpoint yo'q",
+      ),
     );
   }
 

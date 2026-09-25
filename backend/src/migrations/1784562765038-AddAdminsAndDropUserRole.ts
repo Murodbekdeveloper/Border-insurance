@@ -1,8 +1,17 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
-const SUPERADMIN_EMAIL = 'developermurodbek@gmail.com';
-const SUPERADMIN_PASSWORD = '20061214develop.M';
+// Original literal seed values were scrubbed from this file 2026-09-21
+// after being found committed in plaintext — rotate the real superadmin
+// password in production (it's still whatever this migration originally
+// set, until changed via the admin panel) if that hasn't happened yet,
+// since the old value remains readable in git history regardless of this
+// edit. Left as placeholders rather than deleted since this migration
+// already ran everywhere it needed to (TypeORM tracks completion by class
+// name, not file content) — editing it further doesn't change what
+// already executed, only what a fresh clone's history shows going forward.
+const SUPERADMIN_EMAIL = 'admin@example.test';
+const SUPERADMIN_PASSWORD = 'REDACTED_ROTATE_BEFORE_REUSE';
 const SALT_ROUNDS = 10;
 
 export class AddAdminsAndDropUserRole1784562765038 implements MigrationInterface {
