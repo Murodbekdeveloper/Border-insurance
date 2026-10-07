@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   Body,
   Controller,
   Get,
@@ -116,6 +117,16 @@ export class PoliciesController {
       if (err instanceof AsiaInsuranceApiError && err.httpStatus === 0) {
         throw new ServiceUnavailableException(
           "Sug'urta kompaniyasi bilan integratsiya hali sozlanmagan",
+        );
+      }
+      // Any other AsiaInsuranceApiError means the partner's HTTP response
+      // itself wasn't ok (a real status + response body, already logged by
+      // AsiaInsuranceClientService.parse()). Surfaced as a clean 502 instead
+      // of falling through to Nest's generic, undiagnosable 500 — check the
+      // Render logs for the logged response body to see their actual reason.
+      if (err instanceof AsiaInsuranceApiError) {
+        throw new BadGatewayException(
+          "Sug'urta kompaniyasi (Asia Insurance) so'rovni rad etdi. Transport va fuqaro ma'lumotlarini tekshirib, birozdan so'ng qayta urinib ko'ring.",
         );
       }
       throw err;

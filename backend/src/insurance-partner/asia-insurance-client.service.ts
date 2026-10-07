@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AsiaInsuranceApiError } from './asia-insurance-api.error';
 import {
@@ -27,6 +27,8 @@ import {
  */
 @Injectable()
 export class AsiaInsuranceClientService {
+  private readonly logger = new Logger(AsiaInsuranceClientService.name);
+
   constructor(private readonly configService: ConfigService) {}
 
   // get-calc-osago is shared between production and sandbox (confirmed by
@@ -160,7 +162,7 @@ export class AsiaInsuranceClientService {
       },
       body: JSON.stringify(body),
     });
-    return this.parse<TResponse>(res);
+    return this.parse<TResponse>(res, url);
   }
 
   private async get<TResponse>(
@@ -171,14 +173,22 @@ export class AsiaInsuranceClientService {
     const res = await fetch(url, {
       headers: this.authHeader(),
     });
-    return this.parse<TResponse>(res);
+    return this.parse<TResponse>(res, url);
   }
 
-  private async parse<TResponse>(res: Response): Promise<TResponse> {
+  private async parse<TResponse>(res: Response, url: string): Promise<TResponse> {
     if (!res.ok) {
+      // Asia Insurance's actual rejection reason (invalid plate format,
+      // unknown vehicle, bad payload field, etc.) lives in the response
+      // body — without logging it here, it's lost the moment this throws,
+      // and the customer/Render logs only ever see a bare status code.
+      const bodyText = await res.text().catch(() => '');
+      this.logger.error(
+        `${url} -> ${res.status}: ${bodyText.slice(0, 2000) || '(empty body)'}`,
+      );
       throw new AsiaInsuranceApiError(
         res.status,
-        `Asia Insurance API xatosi: ${res.status}`,
+        `Asia Insurance API xatosi: ${res.status}${bodyText ? ` — ${bodyText.slice(0, 500)}` : ''}`,
       );
     }
     return (await res.json()) as TResponse;
