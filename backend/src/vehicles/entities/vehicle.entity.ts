@@ -35,7 +35,7 @@ export class Vehicle {
   @Column({ type: 'enum', enum: RegistrationCountry })
   registrationCountry: RegistrationCountry;
 
-  @Column({ unique: true })
+  @Column()
   plateNumber: string;
 
   @Column()
@@ -56,10 +56,10 @@ export class Vehicle {
   @Column()
   manufactureYear: number;
 
-  @Column({ unique: true })
+  @Column()
   bodyNumber: string;
 
-  @Column({ unique: true })
+  @Column()
   engineNumber: string;
 
   // Only actually required for a foreign-registered vehicle — Asia
