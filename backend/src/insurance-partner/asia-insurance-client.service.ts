@@ -176,7 +176,10 @@ export class AsiaInsuranceClientService {
     return this.parse<TResponse>(res, url);
   }
 
-  private async parse<TResponse>(res: Response, url: string): Promise<TResponse> {
+  private async parse<TResponse>(
+    res: Response,
+    url: string,
+  ): Promise<TResponse> {
     if (!res.ok) {
       // Asia Insurance's actual rejection reason (invalid plate format,
       // unknown vehicle, bad payload field, etc.) lives in the response

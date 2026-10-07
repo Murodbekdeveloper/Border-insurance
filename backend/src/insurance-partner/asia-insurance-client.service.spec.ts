@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AsiaInsuranceClientService } from './asia-insurance-client.service';
 import { AsiaInsuranceApiError } from './asia-insurance-api.error';
@@ -138,11 +139,34 @@ describe('AsiaInsuranceClientService', () => {
   });
 
   it('throws AsiaInsuranceApiError with the HTTP status on a non-2xx response', async () => {
-    fetchMock.mockResolvedValue({ ok: false, status: 401 });
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: () => Promise.resolve('invalid token'),
+    });
 
     await expect(service.getRelatives()).rejects.toMatchObject({
       httpStatus: 401,
     } satisfies Partial<AsiaInsuranceApiError>);
+  });
+
+  it('includes the response body in the thrown error and logs it on a non-2xx response', async () => {
+    const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 422,
+      text: () => Promise.resolve('{"message":"Noto\'g\'ri davlat raqami"}'),
+    });
+
+    await expect(service.getRelatives()).rejects.toMatchObject({
+      httpStatus: 422,
+      message: expect.stringContaining("Noto'g'ri davlat raqami") as string,
+    });
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Noto'g'ri davlat raqami"),
+    );
+
+    errorSpy.mockRestore();
   });
 
   it('throws before ever calling fetch when the login/password are not configured', async () => {
