@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { ExitToMenuButton } from '@/components/ExitToMenuButton';
 
 interface AuthShellProps {
@@ -70,7 +71,10 @@ export function AuthShell({ title, subtitle, children, wide, showExitToMenu }: A
       <div className="relative flex flex-1 items-center justify-center bg-slate-50 px-6 py-16 dark:bg-slate-950 lg:bg-white lg:dark:bg-slate-950">
         <div className="absolute left-6 right-6 top-6 flex items-center justify-between">
           {showExitToMenu ? <ExitToMenuButton /> : <span />}
-          <ThemeToggle />
+          <div className="flex items-center gap-1">
+            <LanguageSwitcher />
+            <ThemeToggle />
+          </div>
         </div>
         <div className={wide ? 'w-full max-w-2xl' : 'w-full max-w-md'}>
           <Link href="/" className="mb-8 flex items-center gap-2.5 transition-opacity hover:opacity-80 lg:hidden">

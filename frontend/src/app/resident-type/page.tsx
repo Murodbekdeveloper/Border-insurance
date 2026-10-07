@@ -5,24 +5,27 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ResidentType } from '@/types';
 import { updateResidentType, updateCitizenship } from '@/lib/api/auth';
 import { getCountries, ApexBoxReferenceOption } from '@/lib/api/apexBox';
+import { localizedName, localizedSearchText } from '@/lib/i18n/multiLang';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuthStore } from '@/store/authStore';
 import { useApplicationStore } from '@/store/applicationStore';
 import { toast } from '@/store/toastStore';
 import { AuthGuard } from '@/components/AuthGuard';
 import { AuthShell } from '@/components/AuthShell';
-import { Select } from '@/components/ui/Select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Button } from '@/components/ui/Button';
+import type { TranslationKey } from '@/lib/i18n/useTranslation';
 
 const OPTIONS: Array<{
   type: ResidentType;
-  title: string;
-  desc: string;
+  titleKey: TranslationKey;
+  descKey: TranslationKey;
   icon: React.ReactNode;
 }> = [
   {
     type: 'resident',
-    title: 'Resident',
-    desc: 'O\'zbekiston Respublikasi fuqarosi yoki doimiy yashovchisiman',
+    titleKey: 'residentType.residentTitle',
+    descKey: 'residentType.residentDesc',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-7 w-7">
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75" />
@@ -31,8 +34,8 @@ const OPTIONS: Array<{
   },
   {
     type: 'non_resident',
-    title: 'No-resident',
-    desc: 'Chet el fuqarosiman yoki transport vositam xorijda ro\'yxatga olingan',
+    titleKey: 'residentType.nonResidentTitle',
+    descKey: 'residentType.nonResidentDesc',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-7 w-7">
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M11.5 3a17 17 0 000 18M12.5 3a17 17 0 010 18" />
@@ -43,6 +46,7 @@ const OPTIONS: Array<{
 
 function ResidentTypeContent() {
   const router = useRouter();
+  const { t, locale } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
   const setResidentType = useApplicationStore((s) => s.setResidentType);
@@ -70,13 +74,13 @@ function ResidentTypeContent() {
       .then(setCountries)
       .catch(() => {
         setCountriesError(true);
-        toast.error("Davlatlar ro'yxatini olishda xatolik yuz berdi");
+        toast.error(t('residentType.countriesFetchError'));
       })
       .finally(() => {
         countriesLoadingRef.current = false;
         setCountriesLoading(false);
       });
-  }, []);
+  }, [t]);
 
   // Chet ellik uchun mashinasi xorijda ro'yxatdan o'tgan bo'lsa, ariza
   // Apex_Box orqali yuboriladi — bu esa arizachining fuqaroligini talab
@@ -97,7 +101,7 @@ function ResidentTypeContent() {
       setResidentType(type);
       router.push('/vehicle-info');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Rezident turini saqlashda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('residentType.residentTypeSaveError'));
     } finally {
       setLoading(null);
     }
@@ -120,7 +124,7 @@ function ResidentTypeContent() {
 
   const handleContinueAsForeigner = async () => {
     if (!citizenshipId) {
-      toast.error('Fuqarolikni tanlang');
+      toast.error(t('residentType.citizenshipRequired'));
       return;
     }
     setContinuing(true);
@@ -128,14 +132,14 @@ function ResidentTypeContent() {
       await updateCitizenship(citizenshipId);
       await proceed('non_resident');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Fuqarolikni saqlashda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('residentType.citizenshipSaveError'));
     } finally {
       setContinuing(false);
     }
   };
 
   return (
-    <AuthShell title="Kim sifatida murojaat qilyapsiz?" subtitle="Rezident turini tanlang" wide showExitToMenu>
+    <AuthShell title={t('residentType.title')} subtitle={t('residentType.subtitle')} wide showExitToMenu>
       <div className="grid grid-cols-2 gap-5">
         {OPTIONS.map((option) => (
           <button
@@ -151,8 +155,8 @@ function ResidentTypeContent() {
               {option.icon}
             </span>
             <div>
-              <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{option.title}</p>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{option.desc}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{t(option.titleKey)}</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t(option.descKey)}</p>
             </div>
             {loading === option.type && (
               <span className="absolute right-5 top-5 h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-green-600 dark:border-slate-700" />
@@ -166,20 +170,24 @@ function ResidentTypeContent() {
           {countriesError && countries.length === 0 ? (
             <div className="flex flex-col items-start gap-2">
               <p className="text-sm text-red-600">
-                Davlatlar ro&apos;yxatini olishda xatolik yuz berdi. Internet aloqasini tekshirib, qayta urinib ko&apos;ring.
+                {t('residentType.countriesError')}
               </p>
               <Button type="button" variant="outline" isLoading={countriesLoading} onClick={loadCountries}>
-                Qayta urinish
+                {t('common.retry')}
               </Button>
             </div>
           ) : (
-            <Select
-              label="Fuqaroligingiz"
-              options={countries.map((c) => ({ value: String(c.id), label: c.name }))}
-              placeholder={countriesLoading ? 'Yuklanmoqda...' : 'Davlatni tanlang'}
+            <SearchableSelect
+              label={t('residentType.citizenshipLabel')}
+              options={countries.map((c) => ({
+                value: String(c.id),
+                label: localizedName(c, locale),
+                searchText: localizedSearchText(c),
+              }))}
+              placeholder={countriesLoading ? t('common.loading') : t('residentType.citizenshipPlaceholder')}
               disabled={countriesLoading}
               value={citizenshipId}
-              onChange={(e) => setCitizenshipId(e.target.value)}
+              onChange={setCitizenshipId}
             />
           )}
           <Button
@@ -189,7 +197,7 @@ function ResidentTypeContent() {
             disabled={!citizenshipId || countriesLoading}
             onClick={handleContinueAsForeigner}
           >
-            Davom etish
+            {t('common.continue')}
           </Button>
         </div>
       )}

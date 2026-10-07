@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { LoginFormData, loginSchema } from '@/lib/validation/schemas';
+import { LoginFormData, getLoginSchema } from '@/lib/validation/schemas';
 import { login, loginAsGuest } from '@/lib/api/auth';
 import { API_URL } from '@/lib/api/client';
 import { getErrorCode } from '@/lib/api/errors';
 import { useAuthStore } from '@/store/authStore';
 import { useAccountsStore } from '@/store/accountsStore';
 import { useAccountSwitch } from '@/hooks/useAccountSwitch';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { toast } from '@/store/toastStore';
 import { AuthShell } from '@/components/AuthShell';
 import { AccountSwitcherList } from '@/components/AccountSwitcherList';
@@ -23,6 +24,7 @@ const EMAIL_NOT_VERIFIED_CODE = 'EMAIL_NOT_VERIFIED';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const setSession = useAuthStore((s) => s.setSession);
   const currentUserId = useAuthStore((s) => s.user?.id);
   const accounts = useAccountsStore((s) => s.accounts);
@@ -35,7 +37,7 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(getLoginSchema(t)),
     defaultValues: { email: '', password: '' },
   });
 
@@ -44,15 +46,15 @@ export default function LoginPage() {
     try {
       const result = await login(data);
       setSession(result.user, result.accessToken, result.refreshToken);
-      toast.success('Muvaffaqiyatli kirdingiz');
+      toast.success(t('login.loggedInToast'));
       router.push('/policies');
     } catch (err) {
       if (getErrorCode(err) === EMAIL_NOT_VERIFIED_CODE) {
-        toast.error(err instanceof Error ? err.message : 'Email hali tasdiqlanmagan');
+        toast.error(err instanceof Error ? err.message : t('login.emailNotVerified'));
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
         return;
       }
-      toast.error(err instanceof Error ? err.message : 'Kirishda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('login.loginError'));
     }
   };
 
@@ -65,22 +67,22 @@ export default function LoginPage() {
     try {
       const result = await loginAsGuest();
       setSession(result.user, result.accessToken, result.refreshToken);
-      toast.success('Mehmon sifatida kirdingiz');
+      toast.success(t('login.guestLoggedInToast'));
       router.push('/policies');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Mehmon sifatida kirishda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('login.guestLoginError'));
     } finally {
       setIsGuestLoading(false);
     }
   };
 
   return (
-    <AuthShell title="Kirish" subtitle="OSAGO onlayn sug'urta tizimiga xush kelibsiz">
+    <AuthShell title={t('login.title')} subtitle={t('login.subtitle')}>
       <div className="flex flex-col gap-4">
         {accounts.length > 0 && (
           <div className="flex flex-col gap-2">
             <p className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Hisoblaringiz
+              {t('login.yourAccounts')}
             </p>
             <AccountSwitcherList
               accounts={accounts}
@@ -91,7 +93,7 @@ export default function LoginPage() {
             />
             <div className="flex items-center gap-3 pt-1 text-xs text-slate-400">
               <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-              boshqa hisob bilan kirish
+              {t('login.loginWithOtherAccount')}
               <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
             </div>
           </div>
@@ -104,32 +106,32 @@ export default function LoginPage() {
             <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.16.28-1.7V4.97H.98A9 9 0 0 0 0 9c0 1.45.35 2.83.98 4.03l2.97-2.33Z" />
             <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .98 4.97l2.97 2.33C4.66 5.17 6.65 3.58 9 3.58Z" />
           </svg>
-          Google orqali kirish
+          {t('login.googleLogin')}
         </Button>
 
         <div className="flex items-center gap-3 text-xs text-slate-400">
           <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-          yoki
+          {t('login.or')}
           <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Input
-            label="Email"
+            label={t('login.email')}
             type="email"
             placeholder="email@example.com"
             error={errors.email?.message}
             {...register('email')}
           />
           <PasswordInput
-            label="Parol"
-            placeholder="Parolingizni kiriting"
+            label={t('login.password')}
+            placeholder={t('login.passwordPlaceholder')}
             error={errors.password?.message}
             {...register('password')}
           />
 
           <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting}>
-            Kirish
+            {t('login.submit')}
           </Button>
         </form>
 
@@ -140,14 +142,14 @@ export default function LoginPage() {
           isLoading={isGuestLoading}
           onClick={handleGuestLogin}
         >
-          Mehmon sifatida kirish
+          {t('login.guestLogin')}
         </Button>
       </div>
 
       <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
-        Hisobingiz yo&apos;qmi?{' '}
+        {t('login.noAccount')}{' '}
         <Link href="/register" className="font-semibold text-orange-600 hover:underline">
-          Ro&apos;yxatdan o&apos;tish
+          {t('login.register')}
         </Link>
       </p>
     </AuthShell>

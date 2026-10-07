@@ -1,10 +1,18 @@
+import { COUNTRY_NAME_EN } from './country-names-en';
+import { COUNTRY_NAME_KY } from './country-names-ky';
+import { COUNTRY_NAME_ZH } from './country-names-zh';
+
 // Asia Insurance's own reference endpoints (both osago_v3 and Apex_Box)
 // return these names in Russian only — confirmed against their live
-// responses, there is no Uzbek field anywhere in this data. This app is
-// Uzbek-only (no language switcher at all), so these static id -> Uzbek
-// name maps translate them before they reach the frontend. Any id not in
-// a map falls back to the original (Russian) name rather than disappearing
-// — covers an item Asia Insurance adds on their side later.
+// responses, there is no Uzbek field anywhere in this data. These static
+// id -> name maps translate them before they reach the frontend. Any id not
+// in a map falls back to the original (Russian) name rather than
+// disappearing — covers an item Asia Insurance adds on their side later.
+// Countries and the smaller reference lists (durations/periods/relatives)
+// all get EN/KY/ZH translations too, since the app's UI supports 5
+// languages — see translateMultiLang below. Countries' EN/KY/ZH live in
+// their own files (country-names-en/ky/zh.ts, 247 entries each); the
+// smaller lists keep theirs inline next to the Uzbek map below.
 
 // GET /apex-box/countries (Apex_Box's /countries) — for a non-resident
 // applicant's citizenshipId. Keyed by their numeric id, not the name, since
@@ -267,6 +275,21 @@ export const FOREIGN_VEHICLE_DURATION_NAME_UZ: Record<number, string> = {
   2: '16 kundan 2 oygacha',
   13: '1 yil',
 };
+export const FOREIGN_VEHICLE_DURATION_NAME_EN: Record<number, string> = {
+  1: 'Up to 15 days',
+  2: '16 days to 2 months',
+  13: '1 year',
+};
+export const FOREIGN_VEHICLE_DURATION_NAME_KY: Record<number, string> = {
+  1: '15 күнгө чейин',
+  2: '16 күндөн 2 айга чейин',
+  13: '1 жыл',
+};
+export const FOREIGN_VEHICLE_DURATION_NAME_ZH: Record<number, string> = {
+  1: '15天以内',
+  2: '16天至2个月',
+  13: '1年',
+};
 
 // GET /insurance-partner/periods (osago_v3's /get-period) — domestic
 // policy duration. CONFIRMED 2026-09-16 against the live endpoint: only
@@ -275,6 +298,18 @@ export const FOREIGN_VEHICLE_DURATION_NAME_UZ: Record<number, string> = {
 export const PERIOD_NAME_UZ: Record<number, string> = {
   1: '1 yil',
   2: '6 oy',
+};
+export const PERIOD_NAME_EN: Record<number, string> = {
+  1: '1 year',
+  2: '6 months',
+};
+export const PERIOD_NAME_KY: Record<number, string> = {
+  1: '1 жыл',
+  2: '6 ай',
+};
+export const PERIOD_NAME_ZH: Record<number, string> = {
+  1: '1年',
+  2: '6个月',
 };
 
 // GET /insurance-partner/relatives (osago_v3's /get-relative) — driver's
@@ -292,30 +327,143 @@ export const RELATIVE_NAME_UZ: Record<number, string> = {
   9: 'Opa',
   10: 'Singil',
 };
+export const RELATIVE_NAME_EN: Record<number, string> = {
+  0: '-',
+  1: 'Father',
+  2: 'Mother',
+  3: 'Husband',
+  4: 'Wife',
+  5: 'Son',
+  6: 'Daughter',
+  7: 'Older brother',
+  8: 'Younger brother',
+  9: 'Older sister',
+  10: 'Younger sister',
+};
+export const RELATIVE_NAME_KY: Record<number, string> = {
+  0: '-',
+  1: 'Ата',
+  2: 'Эне',
+  3: 'Күйөө',
+  4: 'Аял',
+  5: 'Уул',
+  6: 'Кыз',
+  7: 'Ага',
+  8: 'Ини',
+  9: 'Эже',
+  10: 'Сиңди',
+};
+export const RELATIVE_NAME_ZH: Record<number, string> = {
+  0: '-',
+  1: '父亲',
+  2: '母亲',
+  3: '丈夫',
+  4: '妻子',
+  5: '儿子',
+  6: '女儿',
+  7: '哥哥',
+  8: '弟弟',
+  9: '姐姐',
+  10: '妹妹',
+};
 
-export function translateReferenceItems<
+// Value type is explicitly `| undefined` (rather than relying on
+// noUncheckedIndexedAccess, which isn't enabled project-wide) so
+// `maps.en[key]` etc. below is honestly typed as possibly-missing instead
+// of silently claiming every id is covered — each map only covers the ids
+// actually observed from Asia Insurance/Apex_Box, not every id that could
+// ever appear.
+export interface MultiLangMaps {
+  uz: Record<number, string | undefined>;
+  en: Record<number, string | undefined>;
+  ky: Record<number, string | undefined>;
+  zh: Record<number, string | undefined>;
+}
+
+export type WithMultiLangNames<T> = T & {
+  nameRu: string;
+  nameEn?: string;
+  nameKy?: string;
+  nameZh?: string;
+};
+
+// Shared by every reference list this app shows in all 5 supported UI
+// languages (see LanguageSwitcher/useTranslation): keeps every language's
+// name on the item instead of discarding everything but one — nameRu is
+// Asia Insurance's own original (their API only ever returns Russian),
+// nameEn/nameKy/nameZh are our static translations. `getKey` extracts
+// whichever field each list is actually keyed by (id for countries/
+// durations, relative/period for the other two — Asia Insurance's own
+// inconsistent field naming, not ours). The frontend's localizedName()/
+// localizedSearchText() (lib/i18n/multiLang.ts) pick the right one to
+// display/search by the active locale.
+function translateMultiLang<T extends { name: string }>(
+  items: T[],
+  getKey: (item: T) => number,
+  maps: MultiLangMaps,
+): WithMultiLangNames<T>[] {
+  return items.map((item) => {
+    const key = getKey(item);
+    const translatedUz = maps.uz[key];
+    return {
+      ...item,
+      name: translatedUz ?? item.name,
+      nameRu: item.name,
+      nameEn: maps.en[key],
+      nameKy: maps.ky[key],
+      nameZh: maps.zh[key],
+    };
+  });
+}
+
+const COUNTRY_MAPS: MultiLangMaps = {
+  uz: COUNTRY_NAME_UZ,
+  en: COUNTRY_NAME_EN,
+  ky: COUNTRY_NAME_KY,
+  zh: COUNTRY_NAME_ZH,
+};
+
+const FOREIGN_VEHICLE_DURATION_MAPS: MultiLangMaps = {
+  uz: FOREIGN_VEHICLE_DURATION_NAME_UZ,
+  en: FOREIGN_VEHICLE_DURATION_NAME_EN,
+  ky: FOREIGN_VEHICLE_DURATION_NAME_KY,
+  zh: FOREIGN_VEHICLE_DURATION_NAME_ZH,
+};
+
+const PERIOD_MAPS: MultiLangMaps = {
+  uz: PERIOD_NAME_UZ,
+  en: PERIOD_NAME_EN,
+  ky: PERIOD_NAME_KY,
+  zh: PERIOD_NAME_ZH,
+};
+
+const RELATIVE_MAPS: MultiLangMaps = {
+  uz: RELATIVE_NAME_UZ,
+  en: RELATIVE_NAME_EN,
+  ky: RELATIVE_NAME_KY,
+  zh: RELATIVE_NAME_ZH,
+};
+
+export function translateCountryItems<T extends { id: number | string; name: string }>(
+  items: T[],
+): WithMultiLangNames<T>[] {
+  return translateMultiLang(items, (item) => Number(item.id), COUNTRY_MAPS);
+}
+
+export function translateForeignVehicleDurationItems<
   T extends { id: number | string; name: string },
->(items: T[], map: Record<number, string>): T[] {
-  return items.map((item) => {
-    const translated = map[Number(item.id)];
-    return translated ? { ...item, name: translated } : item;
-  });
+>(items: T[]): WithMultiLangNames<T>[] {
+  return translateMultiLang(items, (item) => Number(item.id), FOREIGN_VEHICLE_DURATION_MAPS);
 }
 
-export function translateRelativeItems<
-  T extends { relative: number; name: string },
->(items: T[], map: Record<number, string>): T[] {
-  return items.map((item) => {
-    const translated = map[item.relative];
-    return translated ? { ...item, name: translated } : item;
-  });
+export function translatePeriodItems<T extends { period: number; name: string }>(
+  items: T[],
+): WithMultiLangNames<T>[] {
+  return translateMultiLang(items, (item) => item.period, PERIOD_MAPS);
 }
 
-export function translatePeriodItems<
-  T extends { period: number; name: string },
->(items: T[], map: Record<number, string>): T[] {
-  return items.map((item) => {
-    const translated = map[item.period];
-    return translated ? { ...item, name: translated } : item;
-  });
+export function translateRelativeItems<T extends { relative: number; name: string }>(
+  items: T[],
+): WithMultiLangNames<T>[] {
+  return translateMultiLang(items, (item) => item.relative, RELATIVE_MAPS);
 }

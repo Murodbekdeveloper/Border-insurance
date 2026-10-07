@@ -1,6 +1,7 @@
 'use client';
 
 import { RememberedAccount } from '@/store/accountsStore';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface AccountSwitcherListProps {
   accounts: RememberedAccount[];
@@ -17,6 +18,7 @@ export function AccountSwitcherList({
   onSelect,
   onRemove,
 }: AccountSwitcherListProps) {
+  const { t } = useTranslation();
   return (
     <ul className="flex flex-col gap-1">
       {accounts.map((account) => {
@@ -48,7 +50,7 @@ export function AccountSwitcherList({
               </span>
               {isCurrent && (
                 <span className="shrink-0 text-xs font-semibold text-orange-600 dark:text-orange-400">
-                  Joriy
+                  {t('nav.current')}
                 </span>
               )}
               {isSwitching && (
@@ -63,7 +65,7 @@ export function AccountSwitcherList({
                   e.stopPropagation();
                   onRemove(account.user.id);
                 }}
-                aria-label="Hisobni ro'yxatdan olib tashlash"
+                aria-label={t('nav.removeAccount')}
                 className="absolute right-2 top-1/2 hidden h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-700 group-hover:flex dark:hover:bg-slate-700 dark:hover:text-slate-200"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3.5 w-3.5">

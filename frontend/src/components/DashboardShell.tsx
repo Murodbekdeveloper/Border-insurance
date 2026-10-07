@@ -5,22 +5,26 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { AccountSwitcherList } from '@/components/AccountSwitcherList';
 import { useAuthStore } from '@/store/authStore';
 import { useAccountsStore } from '@/store/accountsStore';
 import { useApplicationStore } from '@/store/applicationStore';
 import { useAccountSwitch } from '@/hooks/useAccountSwitch';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import type { TranslationKey } from '@/lib/i18n/useTranslation';
 
 interface DashboardShellProps {
   children: ReactNode;
 }
 
-const MOBILE_NAV_ITEMS = [
-  { href: '/policies', label: 'Mening polislarim' },
-  { href: '/profile', label: 'Profil' },
+const MOBILE_NAV_ITEMS: { href: string; labelKey: TranslationKey }[] = [
+  { href: '/policies', labelKey: 'nav.myPolicies' },
+  { href: '/profile', labelKey: 'nav.profile' },
 ];
 
 function MobileTopBar() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -78,7 +82,7 @@ function MobileTopBar() {
         <button
           type="button"
           onClick={() => setMenuOpen(true)}
-          aria-label="Menyuni ochish"
+          aria-label={t('nav.openMenu')}
           className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6">
@@ -91,18 +95,18 @@ function MobileTopBar() {
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
             type="button"
-            aria-label="Menyuni yopish"
+            aria-label={t('nav.closeMenu')}
             onClick={() => setMenuOpen(false)}
             className="absolute inset-0 bg-slate-950/50"
           />
           <div className="absolute inset-y-0 right-0 flex w-[85%] max-w-sm flex-col justify-between bg-white px-6 py-6 shadow-2xl dark:bg-slate-900">
             <div className="min-h-0 flex-1 overflow-y-auto">
               <div className="flex items-center justify-between">
-                <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">Menyu</span>
+                <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">{t('nav.menu')}</span>
                 <button
                   type="button"
                   onClick={() => setMenuOpen(false)}
-                  aria-label="Yopish"
+                  aria-label={t('nav.closeMenu')}
                   className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5">
@@ -116,7 +120,7 @@ function MobileTopBar() {
                 onClick={handleNewApplication}
                 className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-orange-500/30 transition-colors hover:bg-orange-600"
               >
-                + Yangi ariza
+                {t('nav.newApplication')}
               </button>
 
               <nav className="mt-6 flex flex-col gap-1">
@@ -133,15 +137,18 @@ function MobileTopBar() {
                           : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5'
                       }`}
                     >
-                      {item.label}
+                      {t(item.labelKey)}
                     </Link>
                   );
                 })}
               </nav>
 
               <div className="mt-4 flex items-center justify-between rounded-xl px-3 py-2.5">
-                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Ko&apos;rinish</span>
-                <ThemeToggle />
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('nav.view')}</span>
+                <div className="flex items-center gap-1">
+                  <LanguageSwitcher />
+                  <ThemeToggle />
+                </div>
               </div>
 
               {accounts.length > 0 && (
@@ -169,7 +176,7 @@ function MobileTopBar() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{user.fullName}</p>
                     <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                      {otherAccountsCount > 0 ? `+${otherAccountsCount} boshqa hisob` : user.email}
+                      {otherAccountsCount > 0 ? `+${otherAccountsCount} ${t('nav.otherAccountsSuffix')}` : user.email}
                     </p>
                   </div>
                 </div>
@@ -184,7 +191,7 @@ function MobileTopBar() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
                 </span>
-                Boshqa hisob qo&apos;shish
+                {t('nav.addAnotherAccount')}
               </button>
               <button
                 type="button"
@@ -196,7 +203,7 @@ function MobileTopBar() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0110.5 3h6a2.25 2.25 0 012.25 2.25v13.5A2.25 2.25 0 0116.5 21h-6a2.25 2.25 0 01-2.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
                   </svg>
                 </span>
-                Bu hisobdan chiqish
+                {t('nav.logout')}
               </button>
             </div>
           </div>
@@ -214,7 +221,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
         <MobileTopBar />
         <main className="px-6 py-10 lg:px-14 lg:py-12">
           <div className="mx-auto max-w-6xl">
-            <div className="mb-4 hidden justify-end lg:flex">
+            <div className="mb-4 hidden items-center justify-end gap-1 lg:flex">
+              <LanguageSwitcher />
               <ThemeToggle />
             </div>
             {children}

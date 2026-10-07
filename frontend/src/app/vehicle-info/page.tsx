@@ -4,15 +4,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { VehicleFormData, vehicleSchema } from '@/lib/validation/schemas';
+import { VehicleFormData, getVehicleSchema } from '@/lib/validation/schemas';
 import { CITIES, VEHICLE_TYPES } from '@/lib/constants';
 import { getVehicleDefaultsForModel, getWeightCategoryForVehicleType } from '@/lib/carModels';
 import { maskAlnumUpper, maskDigits, maskPhoneUZ, maskPlateNumber, maskYear } from '@/lib/masks';
+import { todayLocalDateString } from '@/lib/utils';
 import { createVehicle, lookupVehicle } from '@/lib/api/vehicles';
 import { extractVehicleDocument, OcrNotConfiguredError } from '@/lib/api/ocr';
 import { getCountries, getForeignVehicleDurations, ApexBoxReferenceOption } from '@/lib/api/apexBox';
 import { getPeriods, PeriodOption } from '@/lib/api/insurancePartner';
+import { localizedName, localizedSearchText } from '@/lib/i18n/multiLang';
 import { updateCitizenship } from '@/lib/api/auth';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuthStore } from '@/store/authStore';
 import { useApplicationStore } from '@/store/applicationStore';
 import { toast } from '@/store/toastStore';
@@ -20,6 +23,7 @@ import { AuthGuard } from '@/components/AuthGuard';
 import { WizardShell } from '@/components/WizardShell';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { BrandModelFields } from '@/components/ui/BrandModelFields';
 import { Button } from '@/components/ui/Button';
@@ -29,6 +33,7 @@ const cityOptions = CITIES.map((c) => ({ value: c, label: c }));
 
 function VehicleInfoContent() {
   const router = useRouter();
+  const { t, locale } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
   const { vehicle, residentType, setVehicle } = useApplicationStore();
@@ -47,7 +52,7 @@ function VehicleInfoContent() {
     watch,
     formState: { errors, isSubmitting, isValid },
   } = useForm<VehicleFormData>({
-    resolver: zodResolver(vehicleSchema),
+    resolver: zodResolver(getVehicleSchema(t)),
     mode: 'onChange',
     defaultValues: vehicle ?? {
       weightCategory: 'yengil',
@@ -82,13 +87,13 @@ function VehicleInfoContent() {
       .then(setForeignDurations)
       .catch(() => {
         setForeignDurationsError(true);
-        toast.error("Sug'urta muddatlari ro'yxatini olishda xatolik yuz berdi");
+        toast.error(t('vehicleInfo.durationsError'));
       })
       .finally(() => {
         foreignDurationsLoadingRef.current = false;
         setForeignDurationsLoading(false);
       });
-  }, []);
+  }, [t]);
   useEffect(() => {
     if (!isForeign || foreignDurations.length > 0) return;
     loadForeignDurations();
@@ -119,13 +124,13 @@ function VehicleInfoContent() {
       .then(setPeriods)
       .catch(() => {
         setPeriodsError(true);
-        toast.error("Sug'urta muddatlari ro'yxatini olishda xatolik yuz berdi");
+        toast.error(t('vehicleInfo.durationsError'));
       })
       .finally(() => {
         periodsLoadingRef.current = false;
         setPeriodsLoading(false);
       });
-  }, []);
+  }, [t]);
   useEffect(() => {
     if (isForeign || periods.length > 0) return;
     loadPeriods();
@@ -157,13 +162,13 @@ function VehicleInfoContent() {
       .then(setCountries)
       .catch(() => {
         setCountriesError(true);
-        toast.error("Davlatlar ro'yxatini olishda xatolik yuz berdi");
+        toast.error(t('vehicleInfo.countriesError'));
       })
       .finally(() => {
         countriesLoadingRef.current = false;
         setCountriesLoading(false);
       });
-  }, []);
+  }, [t]);
   useEffect(() => {
     if (!needsCitizenship || countries.length > 0) return;
     loadCountries();
@@ -178,7 +183,21 @@ function VehicleInfoContent() {
   const techPassportSeriesValue = watch('techPassportSeries');
   const techPassportNumberValue = watch('techPassportNumber');
   const [isLookingUpVehicle, setIsLookingUpVehicle] = useState(false);
+  // Last successfully-looked-up combo — only set on success, so a failed
+  // lookup can still be retried by re-triggering the same values.
   const lookedUpKeyRef = useRef<string | null>(null);
+  // Separately tracks a combo currently in flight, so a re-render before
+  // that request resolves (e.g. switching the UI language, which no
+  // longer re-runs this effect itself but can still happen for other
+  // reasons) can't fire a second concurrent lookup for the same combo.
+  const lookupInFlightRef = useRef<string | null>(null);
+  // Always-current translator, read inside the debounced callback without
+  // making the effect depend on `t` — switching the UI language shouldn't
+  // restart the 600ms debounce or affect an in-flight lookup.
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
 
   useEffect(() => {
     if (isForeign) return;
@@ -190,6 +209,8 @@ function VehicleInfoContent() {
     if (lookedUpKeyRef.current === key) return;
 
     const timer = setTimeout(() => {
+      if (lookupInFlightRef.current === key) return;
+      lookupInFlightRef.current = key;
       void (async () => {
         setIsLookingUpVehicle(true);
         try {
@@ -203,11 +224,12 @@ function VehicleInfoContent() {
             const defaults = getVehicleDefaultsForModel(result.model);
             setValue('vehicleType', defaults.vehicleType, { shouldValidate: true, shouldDirty: true });
             setValue('weightCategory', defaults.weightCategory, { shouldValidate: true, shouldDirty: true });
-            toast.success('Transport ma\'lumotlari avtomatik topildi va to\'ldirildi. Iltimos, tekshirib chiqing.');
+            toast.success(tRef.current('vehicleInfo.vehicleInfoFoundToast'));
           }
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : 'Transport ma\'lumotlarini olishda xatolik yuz berdi');
+          toast.error(err instanceof Error ? err.message : tRef.current('vehicleInfo.vehicleInfoFetchError'));
         } finally {
+          if (lookupInFlightRef.current === key) lookupInFlightRef.current = null;
           setIsLookingUpVehicle(false);
         }
       })();
@@ -219,7 +241,7 @@ function VehicleInfoContent() {
   const onSubmit = async (data: VehicleFormData) => {
     if (!user) return;
     if (needsCitizenship && !citizenshipId) {
-      toast.error('Fuqarolikni tanlang');
+      toast.error(t('vehicleInfo.citizenshipRequired'));
       return;
     }
     try {
@@ -231,7 +253,7 @@ function VehicleInfoContent() {
       setVehicle(data, created.id);
       router.push('/driver-restriction');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Transport ma\'lumotlarini saqlashda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('vehicleInfo.saveError'));
     }
   };
 
@@ -253,26 +275,26 @@ function VehicleInfoContent() {
         }
       }
       if (applied === 0) {
-        return { status: 'error' as const, message: 'Rasmdan ma\'lumot aniqlanmadi. Iltimos, maydonlarni qo\'lda to\'ldiring.' };
+        return { status: 'error' as const, message: t('vehicleInfo.ocrNoDataError') };
       }
-      return { status: 'success' as const, message: 'Ma\'lumotlar aniqlandi va tegishli maydonlarga to\'ldirildi. Iltimos, tekshirib chiqing.' };
+      return { status: 'success' as const, message: t('vehicleInfo.ocrSuccess') };
     } catch (err) {
       if (err instanceof OcrNotConfiguredError) {
         return {
           status: 'not_configured' as const,
-          message: 'Hujjatni avtomatik o\'qish xizmati hali ulanmagan. Hozircha ma\'lumotlarni pastdagi maydonlarga qo\'lda kiriting.',
+          message: t('vehicleInfo.ocrNotConfigured'),
         };
       }
-      return { status: 'error' as const, message: 'Rasmni tahlil qilishda xatolik yuz berdi' };
+      return { status: 'error' as const, message: t('vehicleInfo.ocrError') };
     }
   };
 
   return (
-    <WizardShell currentStep={1} title="Transport vositasi ma'lumotlari" subtitle="Avtomobilingiz haqida ma'lumotlarni to'ldiring" wide>
+    <WizardShell currentStep={1} title={t('vehicleInfo.title')} subtitle={t('vehicleInfo.subtitle')} wide>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
         <ImageUploadCard
-          label="Texpasport rasmi (ixtiyoriy)"
-          description="Davlat raqami, texpasport seriya/raqami va berilgan sanani avtomatik to'ldirish uchun"
+          label={t('vehicleInfo.ocrLabel')}
+          description={t('vehicleInfo.ocrDescription')}
           onExtract={handleExtractDocument}
         />
 
@@ -282,13 +304,13 @@ function VehicleInfoContent() {
             name="weightCategory"
             render={({ field }) => (
               <ToggleSwitch
-                label="Og'irlik toifasi"
+                label={t('vehicleInfo.weightCategory')}
                 value={field.value ?? null}
                 onChange={field.onChange}
                 error={errors.weightCategory?.message}
                 options={[
-                  { value: 'og\'ir', label: 'Og\'ir' },
-                  { value: 'yengil', label: 'Yengil' },
+                  { value: 'og\'ir', label: t('vehicleInfo.weightHeavy') },
+                  { value: 'yengil', label: t('vehicleInfo.weightLight') },
                 ]}
               />
             )}
@@ -299,13 +321,13 @@ function VehicleInfoContent() {
             name="registrationCountry"
             render={({ field }) => (
               <ToggleSwitch
-                label="Ro'yxatga olingan davlat"
+                label={t('vehicleInfo.registrationCountry')}
                 value={field.value ?? null}
                 onChange={field.onChange}
                 error={errors.registrationCountry?.message}
                 options={[
                   { value: 'UZ', label: 'UZ' },
-                  { value: 'Xorij', label: 'Xorij' },
+                  { value: 'Xorij', label: t('vehicleInfo.foreignLabel') },
                 ]}
               />
             )}
@@ -313,7 +335,7 @@ function VehicleInfoContent() {
         </div>
 
         <Input
-          label="Davlat raqami"
+          label={t('vehicleInfo.plateNumber')}
           placeholder="01 A 123 AA"
           error={errors.plateNumber?.message}
           {...register('plateNumber')}
@@ -322,14 +344,14 @@ function VehicleInfoContent() {
 
         <div className="grid grid-cols-2 gap-5">
           <Input
-            label="Texpasport seriyasi"
+            label={t('vehicleInfo.techPassportSeries')}
             placeholder="AAB"
             error={errors.techPassportSeries?.message}
             {...register('techPassportSeries')}
             onChange={(e) => setValue('techPassportSeries', maskAlnumUpper(e.target.value, 4), { shouldValidate: true, shouldDirty: true })}
           />
           <Input
-            label="Texpasport raqami"
+            label={t('vehicleInfo.techPassportNumber')}
             placeholder="1234567"
             inputMode="numeric"
             error={errors.techPassportNumber?.message}
@@ -339,7 +361,7 @@ function VehicleInfoContent() {
         </div>
         {isLookingUpVehicle && (
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Transport ma&apos;lumotlari qidirilmoqda...
+            {t('vehicleInfo.lookingUpVehicle')}
           </p>
         )}
 
@@ -368,9 +390,9 @@ function VehicleInfoContent() {
 
         <div className="grid grid-cols-2 gap-5">
           <Select
-            label="Transport turi"
-            options={VEHICLE_TYPES}
-            placeholder="Transport turini tanlang"
+            label={t('vehicleInfo.vehicleTypeLabel')}
+            options={VEHICLE_TYPES.map((v) => ({ value: v.value, label: t(v.labelKey) }))}
+            placeholder={t('vehicleInfo.vehicleTypePlaceholder')}
             error={errors.vehicleType?.message}
             {...register('vehicleType', {
               onChange: (e) => {
@@ -383,9 +405,9 @@ function VehicleInfoContent() {
             })}
           />
           <Input
-            label="Texpasport berilgan sana"
+            label={t('vehicleInfo.techPassportIssueDate')}
             type="date"
-            max={new Date().toISOString().split('T')[0]}
+            max={todayLocalDateString()}
             error={errors.techPassportIssueDate?.message}
             {...register('techPassportIssueDate')}
           />
@@ -393,7 +415,7 @@ function VehicleInfoContent() {
 
         <div className="grid grid-cols-2 gap-5">
           <Input
-            label="Chiqarilgan yili"
+            label={t('vehicleInfo.manufactureYear')}
             inputMode="numeric"
             placeholder="2020"
             error={errors.manufactureYear?.message}
@@ -401,8 +423,8 @@ function VehicleInfoContent() {
             onChange={(e) => setValue('manufactureYear', maskYear(e.target.value), { shouldValidate: true, shouldDirty: true })}
           />
           <Input
-            label="Kuzov raqami"
-            placeholder="VIN / kuzov raqami"
+            label={t('vehicleInfo.bodyNumber')}
+            placeholder={t('vehicleInfo.bodyNumberPlaceholder')}
             error={errors.bodyNumber?.message}
             {...register('bodyNumber')}
             onChange={(e) => setValue('bodyNumber', maskAlnumUpper(e.target.value, 17), { shouldValidate: true, shouldDirty: true })}
@@ -411,24 +433,24 @@ function VehicleInfoContent() {
 
         <div className="grid grid-cols-2 gap-5">
           <Input
-            label="Dvigatel raqami"
-            placeholder="Dvigatel raqami"
+            label={t('vehicleInfo.engineNumber')}
+            placeholder={t('vehicleInfo.engineNumber')}
             error={errors.engineNumber?.message}
             {...register('engineNumber')}
             onChange={(e) => setValue('engineNumber', maskAlnumUpper(e.target.value, 17), { shouldValidate: true, shouldDirty: true })}
           />
           {isForeign ? (
             <Input
-              label="Shahar / manzil"
-              placeholder="Shahar nomini kiriting"
+              label={t('vehicleInfo.cityForeignLabel')}
+              placeholder={t('vehicleInfo.cityForeignPlaceholder')}
               error={errors.city?.message}
               {...register('city')}
             />
           ) : (
             <Select
-              label="Shahar (ixtiyoriy)"
+              label={t('vehicleInfo.cityLabel')}
               options={cityOptions}
-              placeholder="Shaharni tanlang"
+              placeholder={t('vehicleInfo.cityPlaceholder')}
               error={errors.city?.message}
               {...register('city')}
             />
@@ -439,17 +461,17 @@ function VehicleInfoContent() {
           foreignDurationsError && foreignDurations.length === 0 ? (
             <div className="flex flex-col items-start gap-2 rounded-xl border border-red-200 p-4 dark:border-red-900/40">
               <p className="text-sm text-red-600">
-                Sug&apos;urta muddatlari ro&apos;yxatini olishda xatolik yuz berdi. Internet aloqasini tekshirib, qayta urinib ko&apos;ring.
+                {t('vehicleInfo.durationsError')}
               </p>
               <Button type="button" variant="outline" isLoading={foreignDurationsLoading} onClick={loadForeignDurations}>
-                Qayta urinish
+                {t('common.retry')}
               </Button>
             </div>
           ) : (
             <Select
-              label="Sug'urta muddati"
-              options={foreignDurations.map((d) => ({ value: String(d.id), label: d.name }))}
-              placeholder={foreignDurationsLoading ? 'Yuklanmoqda...' : 'Muddatni tanlang'}
+              label={t('vehicleInfo.durationLabel')}
+              options={foreignDurations.map((d) => ({ value: String(d.id), label: localizedName(d, locale) }))}
+              placeholder={foreignDurationsLoading ? t('common.loading') : t('vehicleInfo.durationPlaceholder')}
               disabled={foreignDurationsLoading}
               error={errors.foreignPolicyDurationId?.message}
               {...register('foreignPolicyDurationId')}
@@ -461,17 +483,17 @@ function VehicleInfoContent() {
           periodsError && periods.length === 0 ? (
             <div className="flex flex-col items-start gap-2 rounded-xl border border-red-200 p-4 dark:border-red-900/40">
               <p className="text-sm text-red-600">
-                Sug&apos;urta muddatlari ro&apos;yxatini olishda xatolik yuz berdi. Internet aloqasini tekshirib, qayta urinib ko&apos;ring.
+                {t('vehicleInfo.durationsError')}
               </p>
               <Button type="button" variant="outline" isLoading={periodsLoading} onClick={loadPeriods}>
-                Qayta urinish
+                {t('common.retry')}
               </Button>
             </div>
           ) : (
             <Select
-              label="Sug'urta muddati"
-              options={periods.map((p) => ({ value: String(p.period), label: p.name }))}
-              placeholder={periodsLoading ? 'Yuklanmoqda...' : 'Muddatni tanlang'}
+              label={t('vehicleInfo.durationLabel')}
+              options={periods.map((p) => ({ value: String(p.period), label: localizedName(p, locale) }))}
+              placeholder={periodsLoading ? t('common.loading') : t('vehicleInfo.durationPlaceholder')}
               disabled={periodsLoading}
               error={errors.periodId?.message}
               {...register('periodId')}
@@ -483,26 +505,30 @@ function VehicleInfoContent() {
           countriesError && countries.length === 0 ? (
             <div className="flex flex-col items-start gap-2 rounded-xl border border-red-200 p-4 dark:border-red-900/40">
               <p className="text-sm text-red-600">
-                Davlatlar ro&apos;yxatini olishda xatolik yuz berdi. Internet aloqasini tekshirib, qayta urinib ko&apos;ring.
+                {t('vehicleInfo.countriesError')}
               </p>
               <Button type="button" variant="outline" isLoading={countriesLoading} onClick={loadCountries}>
-                Qayta urinish
+                {t('common.retry')}
               </Button>
             </div>
           ) : (
-            <Select
-              label="Fuqaroligingiz"
-              options={countries.map((c) => ({ value: String(c.id), label: c.name }))}
-              placeholder={countriesLoading ? 'Yuklanmoqda...' : 'Davlatni tanlang'}
+            <SearchableSelect
+              label={t('vehicleInfo.citizenshipLabel')}
+              options={countries.map((c) => ({
+                value: String(c.id),
+                label: localizedName(c, locale),
+                searchText: localizedSearchText(c),
+              }))}
+              placeholder={countriesLoading ? t('common.loading') : t('vehicleInfo.citizenshipPlaceholder')}
               disabled={countriesLoading}
               value={citizenshipId}
-              onChange={(e) => setCitizenshipId(e.target.value)}
+              onChange={setCitizenshipId}
             />
           )
         )}
 
         <Input
-          label="Telefon raqami"
+          label={t('vehicleInfo.phone')}
           placeholder="+998901234567"
           inputMode="numeric"
           error={errors.phone?.message}
@@ -516,12 +542,12 @@ function VehicleInfoContent() {
             name="ownerIsApplicant"
             render={({ field }) => (
               <ToggleSwitch
-                label="Transport egasi"
+                label={t('vehicleInfo.ownerSectionLabel')}
                 value={field.value ? 'ha' : 'yoq'}
                 onChange={(val) => field.onChange(val === 'ha')}
                 options={[
-                  { value: 'ha', label: 'Men egasiman' },
-                  { value: 'yoq', label: 'Boshqa shaxs' },
+                  { value: 'ha', label: t('vehicleInfo.ownerIsApplicant') },
+                  { value: 'yoq', label: t('vehicleInfo.ownerIsOther') },
                 ]}
               />
             )}
@@ -530,26 +556,26 @@ function VehicleInfoContent() {
           {!ownerIsApplicant && (
             <div className="mt-5 flex flex-col gap-5">
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Transport egasining pasport ma&apos;lumotlarini kiriting — sug&apos;urta kompaniyasi rasmiy polis uchun talab qiladi.
+                {t('vehicleInfo.ownerDataNote')}
               </p>
               <div className="grid grid-cols-2 gap-5">
                 <Input
-                  label="Egasining pasport seriyasi"
+                  label={t('vehicleInfo.ownerPassportSeries')}
                   placeholder="AB"
                   error={errors.ownerPassportSeries?.message}
                   {...register('ownerPassportSeries')}
                 />
                 <Input
-                  label="Egasining pasport raqami"
+                  label={t('vehicleInfo.ownerPassportNumber')}
                   placeholder="1234567"
                   error={errors.ownerPassportNumber?.message}
                   {...register('ownerPassportNumber')}
                 />
               </div>
               <Input
-                label="Egasining tug'ilgan sanasi"
+                label={t('vehicleInfo.ownerBirthDate')}
                 type="date"
-                max={new Date().toISOString().split('T')[0]}
+                max={todayLocalDateString()}
                 error={errors.ownerBirthDate?.message}
                 {...register('ownerBirthDate')}
               />
@@ -559,7 +585,7 @@ function VehicleInfoContent() {
 
         <div className="flex justify-between">
           <Button type="button" variant="outline" onClick={() => router.push('/resident-type')}>
-            Orqaga
+            {t('common.back')}
           </Button>
           <Button
             type="submit"
@@ -568,7 +594,7 @@ function VehicleInfoContent() {
             disabled={!isValid || (needsCitizenship && !citizenshipId)}
             className="px-10"
           >
-            Keyingisi
+            {t('vehicleInfo.next')}
           </Button>
         </div>
       </form>

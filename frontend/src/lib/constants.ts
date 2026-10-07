@@ -1,3 +1,5 @@
+import type { TranslationKey } from './i18n/useTranslation';
+
 export const CITIES = [
   'Toshkent shahri',
   'Andijon',
@@ -15,14 +17,14 @@ export const CITIES = [
   'Xorazm',
 ] as const;
 
-export const VEHICLE_TYPES = [
-  { value: 'yengil_avtomobil', label: 'Yengil avtomobil' },
-  { value: 'yuk_mashinasi', label: 'Yuk mashinasi' },
-  { value: 'avtobus', label: 'Avtobus' },
-  { value: 'mototsikl', label: 'Mototsikl' },
-  { value: 'pritsep', label: 'Pritsep' },
-  { value: 'maxsus_texnika', label: 'Maxsus texnika' },
-] as const;
+export const VEHICLE_TYPES: { value: string; labelKey: TranslationKey }[] = [
+  { value: 'yengil_avtomobil', labelKey: 'vehicleInfo.types.car' },
+  { value: 'yuk_mashinasi', labelKey: 'vehicleInfo.types.truck' },
+  { value: 'avtobus', labelKey: 'vehicleInfo.types.bus' },
+  { value: 'mototsikl', labelKey: 'vehicleInfo.types.motorcycle' },
+  { value: 'pritsep', labelKey: 'vehicleInfo.types.trailer' },
+  { value: 'maxsus_texnika', labelKey: 'vehicleInfo.types.special' },
+];
 
 export const CAR_MODELS = [
   'Chevrolet Cobalt',
@@ -87,11 +89,11 @@ export const PRICING_CONFIG = {
   },
 } as const;
 
-export const STEP_LABELS = [
-  { path: '/vehicle-info', label: 'Transport ma\'lumotlari' },
-  { path: '/driver-restriction', label: 'Haydovchilar' },
-  { path: '/payment', label: 'To\'lov' },
-  { path: '/confirmation', label: 'Tasdiqlash' },
-] as const;
+export const STEP_LABELS: { path: string; labelKey: TranslationKey }[] = [
+  { path: '/vehicle-info', labelKey: 'wizardShell.steps.vehicleInfo' },
+  { path: '/driver-restriction', labelKey: 'wizardShell.steps.driverRestriction' },
+  { path: '/payment', labelKey: 'wizardShell.steps.payment' },
+  { path: '/confirmation', labelKey: 'wizardShell.steps.confirmation' },
+];
 
 export const TOTAL_STEPS = STEP_LABELS.length;

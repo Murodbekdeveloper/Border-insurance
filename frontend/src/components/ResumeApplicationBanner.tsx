@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApplicationStore } from '@/store/applicationStore';
 import { getPolicy } from '@/lib/api/policies';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Button } from '@/components/ui/Button';
 
 export function ResumeApplicationBanner() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { residentType, vehicleId, policyId, reset } = useApplicationStore();
   const [resumePath, setResumePath] = useState<string | null>(null);
 
@@ -45,11 +47,11 @@ export function ResumeApplicationBanner() {
   return (
     <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4 dark:border-orange-900/50 dark:bg-orange-950/20">
       <div>
-        <p className="text-sm font-semibold text-orange-900 dark:text-orange-300">Tugallanmagan arizangiz bor</p>
-        <p className="text-xs text-orange-700 dark:text-orange-400">Oldingi to&apos;ldirilgan ma&apos;lumotlaringiz saqlanib qolgan — davom ettirishingiz mumkin.</p>
+        <p className="text-sm font-semibold text-orange-900 dark:text-orange-300">{t('nav.resumeTitle')}</p>
+        <p className="text-xs text-orange-700 dark:text-orange-400">{t('nav.resumeNote')}</p>
       </div>
       <Button variant="primary" onClick={() => router.push(resumePath)} className="shrink-0">
-        Davom ettirish
+        {t('nav.resumeButton')}
       </Button>
     </div>
   );

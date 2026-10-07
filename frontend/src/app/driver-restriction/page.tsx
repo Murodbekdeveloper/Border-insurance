@@ -6,9 +6,13 @@ import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { DriverRestrictionFormData, getDriverRestrictionSchema } from '@/lib/validation/schemas';
 import { maskAlnumUpper, maskDigits, maskLetters, maskLettersStrict } from '@/lib/masks';
+import { todayLocalDateString } from '@/lib/utils';
 import { createPolicy } from '@/lib/api/policies';
 import { extractDriverLicense, OcrNotConfiguredError } from '@/lib/api/ocr';
 import { getRelatives, InsurancePartnerNotConfiguredError, RelativeOption } from '@/lib/api/insurancePartner';
+import { getApexBoxRelatives, ApexBoxNotConfiguredError } from '@/lib/api/apexBox';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { localizedName } from '@/lib/i18n/multiLang';
 import { useAuthStore } from '@/store/authStore';
 import { MAX_DRIVERS, useApplicationStore } from '@/store/applicationStore';
 import { toast } from '@/store/toastStore';
@@ -32,6 +36,7 @@ const emptyDriver = {
 
 function DriverRestrictionContent() {
   const router = useRouter();
+  const { t, locale } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const { vehicle, vehicleId, residentType, driverRestriction, drivers, setDriverRestriction, setPolicy } = useApplicationStore();
   // Chet el fuqarosining pasporti O'zbekiston pasporti formatiga (2 harf + 7 raqam)
@@ -41,7 +46,8 @@ function DriverRestrictionContent() {
   // guvohnomasi haqiqatan ham kerak; O'zbekiston mashinalarida Asia
   // Insurance'ning osago_v3'ida bunday maydon umuman yo'q — bu isForeign'dan
   // mustaqil (arizachi rezidentligi emas, mashinaning davlati).
-  const requireLicense = vehicle?.registrationCountry === 'Xorij';
+  const isForeignVehicle = vehicle?.registrationCountry === 'Xorij';
+  const requireLicense = isForeignVehicle;
 
   useEffect(() => {
     if (!vehicleId) {
@@ -49,19 +55,29 @@ function DriverRestrictionContent() {
     }
   }, [vehicleId, router]);
 
-  // Asia Insurance API kaliti hali sozlanmagan bo'lsa (INSURANCE_PARTNER_
-  // NOT_CONFIGURED), bu ro'yxat bo'sh qoladi va tanlov maydoni butunlay
-  // ko'rsatilmaydi — OCR ulanmaganda ImageUploadCard tutgan yo'l bilan bir xil.
+  // Xorijda ro'yxatdan o'tgan mashina Apex_Box orqali yuboriladi, uning
+  // qarindoshlik ro'yxati (sp_id) osago_v3'ning /get-relative'idan butunlay
+  // boshqa raqamlash tizimi — shuning uchun har biri o'z hamkoriga mos
+  // ro'yxatdan tanlanishi kerak (apex-box.service.ts'ning
+  // buildCreatePolicyRequest'iga qarang), aks holda noto'g'ri qarindoshlik
+  // qiymati yuborilib qoladi. Hamkor API kaliti hali sozlanmagan bo'lsa
+  // (INSURANCE_PARTNER_NOT_CONFIGURED/APEX_BOX_NOT_CONFIGURED), bu ro'yxat
+  // bo'sh qoladi va tanlov maydoni butunlay ko'rsatilmaydi — OCR
+  // ulanmaganda ImageUploadCard tutgan yo'l bilan bir xil.
   const [relativeOptions, setRelativeOptions] = useState<RelativeOption[]>([]);
   useEffect(() => {
-    getRelatives()
+    const request = isForeignVehicle ? getApexBoxRelatives() : getRelatives();
+    request
       .then(setRelativeOptions)
       .catch((err) => {
-        if (!(err instanceof InsurancePartnerNotConfiguredError)) {
-          toast.error('Qarindoshlik darajalari ro\'yxatini olishda xatolik yuz berdi');
+        if (
+          !(err instanceof InsurancePartnerNotConfiguredError) &&
+          !(err instanceof ApexBoxNotConfiguredError)
+        ) {
+          toast.error(t('driverRestriction.relativesError'));
         }
       });
-  }, []);
+  }, [t, isForeignVehicle]);
 
   const {
     control,
@@ -71,7 +87,7 @@ function DriverRestrictionContent() {
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<DriverRestrictionFormData>({
-    resolver: zodResolver(getDriverRestrictionSchema(isForeign, requireLicense)),
+    resolver: zodResolver(getDriverRestrictionSchema(isForeign, requireLicense, t)),
     defaultValues: {
       driverRestriction: driverRestriction ?? 'cheklanmagan',
       drivers: drivers.length > 0 ? drivers : [],
@@ -106,17 +122,17 @@ function DriverRestrictionContent() {
         }
       }
       if (applied === 0) {
-        return { status: 'error' as const, message: 'Rasmdan ma\'lumot aniqlanmadi. Iltimos, maydonlarni qo\'lda to\'ldiring.' };
+        return { status: 'error' as const, message: t('driverRestriction.ocrNoDataError') };
       }
-      return { status: 'success' as const, message: 'Ma\'lumotlar aniqlandi va tegishli maydonlarga to\'ldirildi. Iltimos, tekshirib chiqing.' };
+      return { status: 'success' as const, message: t('driverRestriction.ocrSuccess') };
     } catch (err) {
       if (err instanceof OcrNotConfiguredError) {
         return {
           status: 'not_configured' as const,
-          message: 'Hujjatni avtomatik o\'qish xizmati hali ulanmagan. Hozircha ma\'lumotlarni pastdagi maydonlarga qo\'lda kiriting.',
+          message: t('driverRestriction.ocrNotConfigured'),
         };
       }
-      return { status: 'error' as const, message: 'Rasmni tahlil qilishda xatolik yuz berdi' };
+      return { status: 'error' as const, message: t('driverRestriction.ocrError') };
     }
   };
 
@@ -135,12 +151,12 @@ function DriverRestrictionContent() {
       setPolicy(policy.id);
       router.push('/payment');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Arizani saqlashda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('driverRestriction.saveError'));
     }
   };
 
   return (
-    <WizardShell currentStep={2} title="Haydovchilar cheklovi" subtitle="Polis qaysi haydovchilarga tegishli ekanligini belgilang" wide>
+    <WizardShell currentStep={2} title={t('driverRestriction.title')} subtitle={t('driverRestriction.subtitle')} wide>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
         <div className="max-w-sm">
           <Controller
@@ -148,7 +164,7 @@ function DriverRestrictionContent() {
             name="driverRestriction"
             render={({ field }) => (
               <ToggleSwitch
-                label="Haydovchilar soni cheklovi"
+                label={t('driverRestriction.countLabel')}
                 value={field.value}
                 onChange={(val) => {
                   field.onChange(val);
@@ -157,8 +173,8 @@ function DriverRestrictionContent() {
                   }
                 }}
                 options={[
-                  { value: 'cheklangan', label: 'Cheklangan' },
-                  { value: 'cheklanmagan', label: 'Cheklanmagan' },
+                  { value: 'cheklangan', label: t('driverRestriction.restricted') },
+                  { value: 'cheklanmagan', label: t('driverRestriction.unrestricted') },
                 ]}
               />
             )}
@@ -167,7 +183,7 @@ function DriverRestrictionContent() {
 
         {restriction === 'cheklanmagan' && (
           <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-400">
-            Istalgan haydovchi ushbu polis bilan transport vositasini boshqarishi mumkin.
+            {t('driverRestriction.unrestrictedNote')}
           </p>
         )}
 
@@ -181,7 +197,7 @@ function DriverRestrictionContent() {
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-700 dark:bg-orange-950/40 dark:text-orange-400">
                       {index + 1}
                     </span>
-                    Haydovchi
+                    {t('driverRestriction.driverLabel')}
                   </span>
                   {fields.length > 1 && (
                     <button
@@ -189,42 +205,42 @@ function DriverRestrictionContent() {
                       onClick={() => remove(index)}
                       className="text-xs font-medium text-red-600 hover:underline"
                     >
-                      O&apos;chirish
+                      {t('driverRestriction.remove')}
                     </button>
                   )}
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <ImageUploadCard
-                    label="Pasport rasmi (ixtiyoriy)"
-                    description="F.I.O., tug'ilgan sana va pasport seriya/raqamini avtomatik to'ldirish uchun"
+                    label={t('driverRestriction.passportImageLabel')}
+                    description={t('driverRestriction.passportImageDescription')}
                     onExtract={(files) => handleExtractDriverDocument(files, index)}
                   />
                   <ImageUploadCard
-                    label="Haydovchilik guvohnomasi rasmi (ixtiyoriy)"
-                    description="Guvohnoma raqami va berilgan sanasini avtomatik to'ldirish uchun"
+                    label={t('driverRestriction.licenseImageLabel')}
+                    description={t('driverRestriction.licenseImageDescription')}
                     onExtract={(files) => handleExtractDriverDocument(files, index)}
                   />
                 </div>
 
                 <div className="mt-5 grid grid-cols-2 gap-5">
                   <Input
-                    label="F.I.O."
-                    placeholder="To'liq ism-sharifi"
+                    label={t('driverRestriction.fullName')}
+                    placeholder={t('driverRestriction.fullNamePlaceholder')}
                     error={errors.drivers?.[index]?.fullName?.message}
                     {...register(`drivers.${index}.fullName`)}
                     onChange={(e) => setValue(`drivers.${index}.fullName`, maskLetters(e.target.value, 60), { shouldValidate: true, shouldDirty: true })}
                   />
                   <Input
-                    label="Tug'ilgan sana"
+                    label={t('driverRestriction.birthDate')}
                     type="date"
-                    max={new Date().toISOString().split('T')[0]}
+                    max={todayLocalDateString()}
                     error={errors.drivers?.[index]?.birthDate?.message}
                     {...register(`drivers.${index}.birthDate`)}
                   />
                   <Input
-                    label="Pasport seriyasi"
-                    placeholder={isForeign ? 'Pasport seriyasi/kodi' : 'AA'}
+                    label={t('driverRestriction.passportSeries')}
+                    placeholder={isForeign ? t('driverRestriction.passportSeriesForeignPlaceholder') : 'AA'}
                     error={errors.drivers?.[index]?.passportSeries?.message}
                     {...register(`drivers.${index}.passportSeries`)}
                     onChange={(e) =>
@@ -236,8 +252,8 @@ function DriverRestrictionContent() {
                     }
                   />
                   <Input
-                    label="Pasport raqami"
-                    placeholder={isForeign ? 'Pasport raqami' : '1234567'}
+                    label={t('driverRestriction.passportNumber')}
+                    placeholder={isForeign ? t('driverRestriction.passportNumberForeignPlaceholder') : '1234567'}
                     inputMode={isForeign ? 'text' : 'numeric'}
                     error={errors.drivers?.[index]?.passportNumber?.message}
                     {...register(`drivers.${index}.passportNumber`)}
@@ -250,23 +266,23 @@ function DriverRestrictionContent() {
                     }
                   />
                   <Input
-                    label={requireLicense ? 'Haydovchilik guvohnomasi raqami' : 'Haydovchilik guvohnomasi raqami (ixtiyoriy)'}
+                    label={requireLicense ? t('driverRestriction.licenseNumber') : t('driverRestriction.licenseNumberOptional')}
                     error={errors.drivers?.[index]?.licenseNumber?.message}
                     {...register(`drivers.${index}.licenseNumber`)}
                     onChange={(e) => setValue(`drivers.${index}.licenseNumber`, maskAlnumUpper(e.target.value, 12), { shouldValidate: true, shouldDirty: true })}
                   />
                   <Input
-                    label={requireLicense ? 'Guvohnoma berilgan sana' : 'Guvohnoma berilgan sana (ixtiyoriy)'}
+                    label={requireLicense ? t('driverRestriction.licenseIssueDate') : t('driverRestriction.licenseIssueDateOptional')}
                     type="date"
-                    max={new Date().toISOString().split('T')[0]}
+                    max={todayLocalDateString()}
                     error={errors.drivers?.[index]?.licenseIssueDate?.message}
                     {...register(`drivers.${index}.licenseIssueDate`)}
                   />
                   {relativeOptions.length > 0 && (
                     <Select
-                      label="Transport egasi bilan qarindoshligi"
-                      options={relativeOptions.map((r) => ({ value: String(r.relative), label: r.name }))}
-                      placeholder="Tanlang"
+                      label={t('driverRestriction.relativeLabel')}
+                      options={relativeOptions.map((r) => ({ value: String(r.relative), label: localizedName(r, locale) }))}
+                      placeholder={t('common.select')}
                       error={errors.drivers?.[index]?.relativeId?.message}
                       {...register(`drivers.${index}.relativeId`, {
                         setValueAs: (v) => (v === '' ? undefined : Number(v)),
@@ -279,7 +295,7 @@ function DriverRestrictionContent() {
 
             {fields.length < MAX_DRIVERS && (
               <Button type="button" variant="outline" onClick={() => append(emptyDriver)}>
-                + Haydovchi qo&apos;shish
+                {t('driverRestriction.addDriver')}
               </Button>
             )}
           </div>
@@ -287,10 +303,10 @@ function DriverRestrictionContent() {
 
         <div className="flex justify-between">
           <Button type="button" variant="outline" onClick={() => router.push('/vehicle-info')}>
-            Orqaga
+            {t('common.back')}
           </Button>
           <Button type="submit" variant="primary" isLoading={isSubmitting} className="px-10">
-            Keyingisi
+            {t('driverRestriction.next')}
           </Button>
         </div>
       </form>

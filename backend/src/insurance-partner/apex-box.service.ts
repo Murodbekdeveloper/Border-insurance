@@ -143,21 +143,11 @@ export class ApexBoxService {
     // selected foreignVehicleId duration) submitted to Apex_Box as if it
     // were the real premium — wrong for anything shorter than a year, and
     // the number actually shown to and charged from the customer.
-    const calc = await this.apexBoxClient.calculatePremium(
-      this.buildCalculatePremiumRequest(policy, user, foreignPolicyDurationId),
+    const { insurancePremium, sumInsured } = await this.runCalculation(
+      policy,
+      user,
+      foreignPolicyDurationId,
     );
-    if (calc.result !== 0) {
-      throw new BadRequestException(
-        `Apex_Box: ${calc.result_message || "noma'lum xatolik"}`,
-      );
-    }
-    const insurancePremium = parseApexBoxAmount(calc.insurance_premium);
-    const sumInsured = parseApexBoxAmount(calc.insurance_sum);
-    if (!Number.isFinite(insurancePremium) || !Number.isFinite(sumInsured)) {
-      throw new BadRequestException(
-        "Apex_Box'dan noto'g'ri sug'urta mukofoti qaytdi",
-      );
-    }
 
     const today = new Date().toISOString().slice(0, 10);
     // A same-day probe (startDate === endDate) hits a *different*, harder
@@ -285,6 +275,71 @@ export class ApexBoxService {
     if (result.result !== 0 || !result.policy_no) return;
     submission.policyNo = result.policy_no;
     await this.submissionsRepository.save(submission);
+  }
+
+  // Pricing-only preview: runs Apex_Box's calculator without registering a
+  // contract, so the amount shown to the customer before they submit (e.g.
+  // on the payment screen) is their real premium, not a local flat-rate
+  // guess (see submitPolicy's comment on why the local estimate is wrong
+  // for anything but a full year). Deliberately gated by
+  // assertReadyForPricing, not the full assertReadyForSubmission — a price
+  // preview should only require what /osago_calculation itself reads
+  // (the applicant's own passport), not e.g. city/citizenship/each
+  // restricted driver's license+relativeId, which only /osago (the actual
+  // contract) needs. Otherwise a customer who hasn't yet filled in every
+  // submission-time field could never see a price at all.
+  async calculatePrice(
+    policy: InsurancePolicy,
+    user: User,
+    foreignPolicyDurationId: string,
+  ): Promise<number> {
+    this.assertReadyForPricing(user);
+    const { insurancePremium } = await this.runCalculation(
+      policy,
+      user,
+      foreignPolicyDurationId,
+    );
+    return insurancePremium;
+  }
+
+  // Shared by calculatePrice and submitPolicy so Apex_Box's calc-call
+  // request-building, result/amount validation, and error messages can't
+  // drift between the two — both ultimately need the same premium/sum
+  // figures from the same call.
+  private async runCalculation(
+    policy: InsurancePolicy,
+    user: User,
+    foreignPolicyDurationId: string,
+  ): Promise<{ insurancePremium: number; sumInsured: number }> {
+    const calc = await this.apexBoxClient.calculatePremium(
+      this.buildCalculatePremiumRequest(policy, user, foreignPolicyDurationId),
+    );
+    if (calc.result !== 0) {
+      throw new BadRequestException(
+        `Apex_Box: ${calc.result_message || "noma'lum xatolik"}`,
+      );
+    }
+    const insurancePremium = parseApexBoxAmount(calc.insurance_premium);
+    const sumInsured = parseApexBoxAmount(calc.insurance_sum);
+    if (!Number.isFinite(insurancePremium) || !Number.isFinite(sumInsured)) {
+      throw new BadRequestException(
+        "Apex_Box'dan noto'g'ri sug'urta mukofoti qaytdi",
+      );
+    }
+    return { insurancePremium, sumInsured };
+  }
+
+  // The subset of assertReadyForSubmission's checks that
+  // /osago_calculation itself actually reads — buildCalculatePremiumRequest
+  // only ever touches the applicant's own passport series/number (not even
+  // birthDate — see its own passportData comment), unlike the full
+  // /osago contract request.
+  private assertReadyForPricing(user: User): void {
+    if (!user.passportSeries || !user.passportNumber) {
+      throw new BadRequestException(
+        "Quyidagi ma'lumotlar to'ldirilmagan: arizachining pasport ma'lumotlari (profil)",
+      );
+    }
   }
 
   private assertReadyForSubmission(policy: InsurancePolicy, user: User): void {

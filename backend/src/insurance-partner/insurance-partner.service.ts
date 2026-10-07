@@ -7,7 +7,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, IsNull, LessThan, Not, Repository } from 'typeorm';
 import { PartnerSubmission } from './entities/partner-submission.entity';
 import { AsiaInsuranceClientService } from './asia-insurance-client.service';
-import { CalcDriver, SavePolicyDriver } from './asia-insurance.types';
+import {
+  CalcDriver,
+  CalcResponse,
+  SavePolicyDriver,
+} from './asia-insurance.types';
 import {
   InsurancePolicy,
   DriverRestriction,
@@ -32,6 +36,23 @@ export interface PartnerSubmitResult {
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+// Postgres unique_violation specifically on partner_submissions.policyId —
+// used to recover from a createSubmission() race (two concurrent
+// submitPolicy() calls for the same policy, e.g. a double-click or a
+// client retry racing ahead of a slow first request) by reusing the row
+// the other call just inserted, instead of surfacing a raw 500.
+function isPolicyIdConflict(err: unknown): boolean {
+  const code =
+    (err as { code?: string; driverError?: { code?: string } })?.code ??
+    (err as { driverError?: { code?: string } })?.driverError?.code;
+  const constraint =
+    (err as { constraint?: string; driverError?: { constraint?: string } })
+      ?.constraint ??
+    (err as { driverError?: { constraint?: string } })?.driverError
+      ?.constraint;
+  return code === '23505' && constraint === 'UQ_partner_submissions_policyId';
 }
 
 // Strips the leading "+" — techPassport.phone_number must be
@@ -64,13 +85,24 @@ export class InsurancePartnerService {
     startDate?: string,
   ): Promise<PartnerSubmission> {
     const repo = manager.getRepository(PartnerSubmission);
-    // ourTransactionId is DB-generated (@Generated('increment')), so a
-    // plain insert() (not save() on a locally-built entity) is required to
-    // avoid TypeORM trying to write an undefined value for it.
-    const insertResult = await repo.insert({ policyId, startDate });
-    return repo.findOneByOrFail({
-      id: insertResult.identifiers[0].id as string,
-    });
+    try {
+      // ourTransactionId is DB-generated (@Generated('increment')), so a
+      // plain insert() (not save() on a locally-built entity) is required
+      // to avoid TypeORM trying to write an undefined value for it.
+      const insertResult = await repo.insert({ policyId, startDate });
+      return await repo.findOneByOrFail({
+        id: insertResult.identifiers[0].id as string,
+      });
+    } catch (err) {
+      // Lost a create-submission race to a concurrent call for the same
+      // policy — reuse the row it just inserted instead of failing with a
+      // raw constraint-violation error.
+      if (isPolicyIdConflict(err)) {
+        const existing = await repo.findOne({ where: { policyId } });
+        if (existing) return existing;
+      }
+      throw err;
+    }
   }
 
   async findByPolicyId(policyId: string): Promise<PartnerSubmission | null> {
@@ -109,42 +141,13 @@ export class InsurancePartnerService {
     const startDate = submission.startDate ?? todayIsoDate();
 
     const periodId = requestedPeriodId ?? (await this.resolveOneYearPeriodId());
-    const limited = policy.driverRestriction === DriverRestriction.RESTRICTED;
-    const owner = { person: this.buildOwnerPerson(policy, user) };
     const applicant = {
       birth_date: user.birthDate as string,
       pass_seria: user.passportSeries as string,
       pass_number: user.passportNumber as string,
     };
-    const drivers = this.buildDrivers(policy);
 
-    const calc = await this.asiaInsuranceClient.calculatePremium({
-      gos_number: policy.vehicle.plateNumber,
-      tech_sery: policy.vehicle.techPassportSeries,
-      tech_number: policy.vehicle.techPassportNumber,
-      period_id: periodId,
-      limited,
-      owner,
-      drivers: drivers.map(
-        ({ pass_seria, pass_number, birth_date }): CalcDriver => ({
-          pass_seria,
-          pass_number,
-          birth_date,
-        }),
-      ),
-    });
-    // FIXED 2026-09-11: `calc.result` was never checked — a business-logic
-    // failure (e.g. err_code 16, "vehicle/passport not found in the real
-    // registry") has no `amount_uzs` in its `response`, so this silently
-    // sent `amount_uzs: undefined` on to /save-policy instead of failing
-    // loudly. This is what made payall_url etc. look "missing" during
-    // testing with synthetic data — Asia Insurance's real response has
-    // always included them; our own code just never surfaced their error.
-    if (!calc.result) {
-      throw new BadRequestException(
-        `Asia Insurance: ${calc.message || "noma'lum xatolik"}`,
-      );
-    }
+    const { calc, limited, owner, drivers } = await this.runCalculation(policy, user, periodId);
 
     const saved = await this.asiaInsuranceClient.savePolicy({
       details: {
@@ -186,18 +189,75 @@ export class InsurancePartnerService {
     };
   }
 
-  private assertReadyForSubmission(policy: InsurancePolicy, user: User): void {
-    // Asia Insurance's /save-policy contract only has fields for an
-    // Uzbek-registered vehicle (gos_number/tech_sery/tech_number) — there's
-    // no confirmed way to submit a genuinely foreign-registered vehicle
-    // (no Uzbek tech passport) yet. Reject explicitly here, naming the
-    // vehicle field, rather than forwarding placeholder/garbage data to
-    // Asia Insurance and surfacing whatever cryptic error they'd return.
-    if (policy.vehicle.registrationCountry === RegistrationCountry.FOREIGN) {
+  // Pricing-only preview: runs Asia Insurance's calculator without
+  // registering an order, so the amount shown to the customer before they
+  // submit (e.g. on the payment screen) is their real premium, not a local
+  // flat-rate guess. Deliberately gated by assertReadyForPricing, not the
+  // full assertReadyForSubmission — a price preview should only require
+  // what /get-calc-osago itself reads (owner/applicant passport+birth
+  // date), not e.g. each restricted driver's relativeId, which only
+  // /save-policy needs. Otherwise a customer who hasn't yet filled in
+  // every submission-time field could never see a price at all.
+  async calculatePrice(
+    policy: InsurancePolicy,
+    user: User,
+    requestedPeriodId?: number,
+  ): Promise<number> {
+    this.assertReadyForPricing(policy, user);
+    const periodId = requestedPeriodId ?? (await this.resolveOneYearPeriodId());
+    const { calc } = await this.runCalculation(policy, user, periodId);
+    return calc.response.amount_uzs;
+  }
+
+  private async runCalculation(
+    policy: InsurancePolicy,
+    user: User,
+    periodId: number,
+  ): Promise<{
+    calc: CalcResponse;
+    limited: boolean;
+    owner: { person: ReturnType<InsurancePartnerService['buildOwnerPerson']> };
+    drivers: SavePolicyDriver[];
+  }> {
+    const limited = policy.driverRestriction === DriverRestriction.RESTRICTED;
+    const owner = { person: this.buildOwnerPerson(policy, user) };
+    const drivers = this.buildDrivers(policy);
+
+    const calc = await this.asiaInsuranceClient.calculatePremium({
+      gos_number: policy.vehicle.plateNumber,
+      tech_sery: policy.vehicle.techPassportSeries,
+      tech_number: policy.vehicle.techPassportNumber,
+      period_id: periodId,
+      limited,
+      owner,
+      drivers: drivers.map(
+        ({ pass_seria, pass_number, birth_date }): CalcDriver => ({
+          pass_seria,
+          pass_number,
+          birth_date,
+        }),
+      ),
+    });
+    // FIXED 2026-09-11: `calc.result` was never checked — a business-logic
+    // failure (e.g. err_code 16, "vehicle/passport not found in the real
+    // registry") has no `amount_uzs` in its `response`, so this silently
+    // sent `amount_uzs: undefined` on to /save-policy instead of failing
+    // loudly. This is what made payall_url etc. look "missing" during
+    // testing with synthetic data — Asia Insurance's real response has
+    // always included them; our own code just never surfaced their error.
+    if (!calc.result) {
       throw new BadRequestException(
-        "Ro'yxatga olingan davlat: xorijda ro'yxatdan o'tgan transport vositalari uchun sug'urta arizasini hali yubora olmaymiz — Asia Insurance bilan bu funksiya ustida ishlanmoqda",
+        `Asia Insurance: ${calc.message || "noma'lum xatolik"}`,
       );
     }
+    return { calc, limited, owner, drivers };
+  }
+
+  // The subset of assertReadyForSubmission's checks that /get-calc-osago
+  // itself actually reads (owner/applicant passport+birth date) — shared
+  // by both so the two can never drift on what "ready" means for the data
+  // they do have in common.
+  private pricingMissingFields(policy: InsurancePolicy, user: User): string[] {
     const missing: string[] = [];
     if (!user.passportSeries || !user.passportNumber || !user.birthDate) {
       missing.push(
@@ -215,6 +275,36 @@ export class InsurancePartnerService {
         );
       }
     }
+    return missing;
+  }
+
+  private assertReadyForPricing(policy: InsurancePolicy, user: User): void {
+    if (policy.vehicle.registrationCountry === RegistrationCountry.FOREIGN) {
+      throw new BadRequestException(
+        "Ro'yxatga olingan davlat: xorijda ro'yxatdan o'tgan transport vositalari uchun sug'urta arizasini hali yubora olmaymiz — Asia Insurance bilan bu funksiya ustida ishlanmoqda",
+      );
+    }
+    const missing = this.pricingMissingFields(policy, user);
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `Quyidagi ma'lumotlar to'ldirilmagan: ${missing.join('; ')}`,
+      );
+    }
+  }
+
+  private assertReadyForSubmission(policy: InsurancePolicy, user: User): void {
+    // Asia Insurance's /save-policy contract only has fields for an
+    // Uzbek-registered vehicle (gos_number/tech_sery/tech_number) — there's
+    // no confirmed way to submit a genuinely foreign-registered vehicle
+    // (no Uzbek tech passport) yet. Reject explicitly here, naming the
+    // vehicle field, rather than forwarding placeholder/garbage data to
+    // Asia Insurance and surfacing whatever cryptic error they'd return.
+    if (policy.vehicle.registrationCountry === RegistrationCountry.FOREIGN) {
+      throw new BadRequestException(
+        "Ro'yxatga olingan davlat: xorijda ro'yxatdan o'tgan transport vositalari uchun sug'urta arizasini hali yubora olmaymiz — Asia Insurance bilan bu funksiya ustida ishlanmoqda",
+      );
+    }
+    const missing = this.pricingMissingFields(policy, user);
     if (policy.driverRestriction === DriverRestriction.RESTRICTED) {
       const missingRelative = policy.drivers.find((d) => d.relativeId == null);
       if (missingRelative) {
@@ -260,9 +350,13 @@ export class InsurancePartnerService {
   private async resolveOneYearPeriodId(): Promise<number> {
     if (this.oneYearPeriodId !== null) return this.oneYearPeriodId;
     const { items } = await this.asiaInsuranceClient.getPeriods();
+    // Both halves require a standalone token, not a bare substring match —
+    // "1" alone would also match inside "1,5 года" (18 months), and "год"/
+    // "year" without \b would match inside an unrelated longer word.
     const oneYear =
-      items.find((i) => /\byil\b|год|year/i.test(i.name) && /1/.test(i.name)) ??
-      items.find((i) => i.period === 1);
+      items.find(
+        (i) => /\b(yil|год|year)\b/i.test(i.name) && /(^|\s)1(\s|$)/.test(i.name),
+      ) ?? items.find((i) => i.period === 1);
     if (!oneYear) {
       throw new BadRequestException(
         "Asia Insurance davrlar ro'yxatida 1 yillik muddat topilmadi",

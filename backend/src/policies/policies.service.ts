@@ -13,7 +13,6 @@ import {
   PolicyStatus,
 } from './entities/insurance-policy.entity';
 import { CreatePolicyDto } from './dto/create-policy.dto';
-import { PricingService } from './pricing/pricing.service';
 import { PdfService } from './pdf/pdf.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import { RegistrationCountry } from '../vehicles/entities/vehicle.entity';
@@ -47,7 +46,6 @@ export class PoliciesService {
   constructor(
     @InjectRepository(InsurancePolicy)
     private readonly policiesRepository: Repository<InsurancePolicy>,
-    private readonly pricingService: PricingService,
     private readonly pdfService: PdfService,
     private readonly vehiclesService: VehiclesService,
     private readonly usersService: UsersService,
@@ -138,21 +136,65 @@ export class PoliciesService {
     return policy;
   }
 
+  // Prices against the real partner calculator (Asia Insurance or
+  // Apex_Box, forking the same way submitToPartner() does) rather than a
+  // local estimate — what's shown here is exactly what submitToPartner()
+  // will charge, not an approximation of it.
   async getPrice(id: string, userId: string): Promise<number> {
     const policy = await this.findByIdForUser(id, userId);
+    // Re-priceable only before submission: the payment page calls this on
+    // every mount, including a revisit of an already-priced DRAFT/
+    // PENDING_PAYMENT policy, so both are allowed. Once a policy has been
+    // submitted to the partner (or beyond), repricing it here would
+    // silently revert its status and overwrite the partner's own
+    // authoritative price — PartnerPolicySyncCron only ever looks for
+    // AWAITING_PARTNER_PAYMENT policies to finalize, so a policy bounced
+    // back to PENDING_PAYMENT from there would never be picked up again
+    // even after the customer actually pays the real insurer.
+    if (
+      policy.status !== PolicyStatus.DRAFT &&
+      policy.status !== PolicyStatus.PENDING_PAYMENT
+    ) {
+      throw new ConflictException(
+        "Ariza hali narxlanmaydi — allaqachon sug'urta kompaniyasiga yuborilgan yoki yakunlangan",
+      );
+    }
     const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
 
-    const price = this.pricingService.calculatePrice({
-      weightCategory: policy.vehicle.weightCategory,
-      driverRestriction: policy.driverRestriction,
-      residentType: user?.residentType,
-      registrationCountry: policy.vehicle.registrationCountry,
-    });
+    const price = this.isForeignVehicle(policy)
+      ? await this.apexBoxService.calculatePrice(
+          policy,
+          user,
+          this.requireForeignPolicyDurationId(policy),
+        )
+      : await this.insurancePartnerService.calculatePrice(
+          policy,
+          user,
+          policy.periodId ?? undefined,
+        );
 
     policy.price = price;
     policy.status = PolicyStatus.PENDING_PAYMENT;
     await this.policiesRepository.save(policy);
     return price;
+  }
+
+  // Shared by getPrice and submitToPartner so the two never fork on
+  // different conditions — both must agree on which partner prices this
+  // policy, since getPrice's whole point is quoting exactly what
+  // submitToPartner will charge.
+  private isForeignVehicle(policy: InsurancePolicy): boolean {
+    return policy.vehicle.registrationCountry === RegistrationCountry.FOREIGN;
+  }
+
+  private requireForeignPolicyDurationId(policy: InsurancePolicy): string {
+    if (!policy.foreignPolicyDurationId) {
+      throw new ConflictException("Sug'urta muddati tanlanmagan");
+    }
+    return policy.foreignPolicyDurationId;
   }
 
   // Registers the priced application with the real OSAGO issuer and returns
@@ -182,15 +224,12 @@ export class PoliciesService {
       throw new NotFoundException('Foydalanuvchi topilmadi');
     }
 
-    if (policy.vehicle.registrationCountry === RegistrationCountry.FOREIGN) {
-      if (!policy.foreignPolicyDurationId) {
-        throw new ConflictException("Sug'urta muddati tanlanmagan");
-      }
+    if (this.isForeignVehicle(policy)) {
       const { clickLink, paymeLink, payallUrl, amountUzs } =
         await this.apexBoxService.submitPolicy(
           policy,
           user,
-          policy.foreignPolicyDurationId,
+          this.requireForeignPolicyDurationId(policy),
         );
       policy.status = PolicyStatus.AWAITING_PARTNER_PAYMENT;
       policy.price = amountUzs;

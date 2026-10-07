@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { verifyEmail, resendVerificationCode } from '@/lib/api/auth';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from '@/store/toastStore';
 import { AuthShell } from '@/components/AuthShell';
@@ -14,6 +15,7 @@ const RESEND_COOLDOWN_SECONDS = 60;
 
 function VerifyEmailContent() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const email = searchParams.get('email') ?? '';
   const setSession = useAuthStore((s) => s.setSession);
@@ -35,10 +37,10 @@ function VerifyEmailContent() {
     try {
       const result = await verifyEmail(email, code);
       setSession(result.user, result.accessToken, result.refreshToken);
-      toast.success('Email muvaffaqiyatli tasdiqlandi');
+      toast.success(t('verifyEmail.verifiedToast'));
       router.push('/resident-type');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Kodni tasdiqlashda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('verifyEmail.verifyError'));
     } finally {
       setVerifying(false);
     }
@@ -48,20 +50,20 @@ function VerifyEmailContent() {
     setResending(true);
     try {
       await resendVerificationCode(email);
-      toast.success('Tasdiqlash kodi qayta yuborildi');
+      toast.success(t('verifyEmail.resentToast'));
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Kodni qayta yuborishda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('verifyEmail.resendError'));
     } finally {
       setResending(false);
     }
   };
 
   return (
-    <AuthShell title="Emailni tasdiqlang" subtitle={`${email} manziliga yuborilgan 6 xonali kodni kiriting`}>
+    <AuthShell title={t('verifyEmail.title')} subtitle={t('verifyEmail.subtitle', { email })}>
       <div className="flex flex-col gap-4">
         <Input
-          label="Tasdiqlash kodi"
+          label={t('verifyEmail.codeLabel')}
           placeholder="123456"
           inputMode="numeric"
           autoFocus
@@ -70,7 +72,7 @@ function VerifyEmailContent() {
         />
 
         <Button type="button" fullWidth isLoading={verifying} disabled={code.length !== 6} onClick={handleVerify}>
-          Tasdiqlash
+          {t('verifyEmail.confirm')}
         </Button>
 
         <button
@@ -79,13 +81,13 @@ function VerifyEmailContent() {
           disabled={resending || cooldown > 0}
           className="text-center text-sm font-semibold text-orange-600 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline dark:text-orange-400 dark:disabled:text-slate-600"
         >
-          {cooldown > 0 ? `Qayta yuborish (${cooldown}s)` : 'Kodni qayta yuborish'}
+          {cooldown > 0 ? t('verifyEmail.resendWithCooldown', { seconds: cooldown }) : t('verifyEmail.resend')}
         </button>
       </div>
 
       <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
         <Link href="/login" className="font-semibold text-orange-600 hover:underline">
-          Kirish sahifasiga qaytish
+          {t('verifyEmail.backToLogin')}
         </Link>
       </p>
     </AuthShell>

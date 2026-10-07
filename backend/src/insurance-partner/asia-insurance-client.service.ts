@@ -97,7 +97,9 @@ export class AsiaInsuranceClientService {
   // so this is behavior-neutral for users — just faster, and honest in
   // logs/monitoring instead of looking like a flaky call. Revert to the
   // real request once Asia Insurance confirms an actual path.
-  lookupVehicle(_request: VehicleLookupRequest): Promise<VehicleLookupResponse> {
+  lookupVehicle(
+    _request: VehicleLookupRequest,
+  ): Promise<VehicleLookupResponse> {
     return Promise.reject(
       new AsiaInsuranceApiError(
         404,

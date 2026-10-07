@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { driverRestrictionSchema, loginSchema, registerSchema, vehicleSchema } from './schemas';
+import { createTranslator } from '@/lib/i18n/useTranslation';
+import { getDriverRestrictionSchema, getLoginSchema, getRegisterSchema, getVehicleSchema } from './schemas';
+
+// Schemas only need a translator to build their error messages — these
+// tests never assert on message text (just `.success`), so a fixed-locale
+// translator is enough; which locale doesn't matter for behavior.
+const t = createTranslator('uz');
+const loginSchema = getLoginSchema(t);
+const registerSchema = getRegisterSchema(t);
+const vehicleSchema = getVehicleSchema(t);
+const driverRestrictionSchema = getDriverRestrictionSchema(false, true, t);
 
 describe('loginSchema', () => {
   it('accepts a valid email/password pair', () => {
@@ -119,5 +129,17 @@ describe('driverRestrictionSchema', () => {
       drivers: [{ ...validDriver, passportSeries: 'ABC' }],
     });
     expect(result.success).toBe(false);
+  });
+
+  // Toggling "cheklangan" -> "cheklanmagan" in the UI leaves a blank/
+  // half-filled driver row sitting in the field array (nothing removes
+  // it), and submitting used to fail validation against that hidden,
+  // irrelevant row with no visible error anywhere on screen.
+  it('allows an unrestricted policy even with a leftover invalid driver row', () => {
+    const result = driverRestrictionSchema.safeParse({
+      driverRestriction: 'cheklanmagan',
+      drivers: [{ fullName: '', birthDate: '', passportSeries: '', passportNumber: '', licenseNumber: '', licenseIssueDate: '' }],
+    });
+    expect(result.success).toBe(true);
   });
 });

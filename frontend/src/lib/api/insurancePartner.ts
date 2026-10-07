@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { apiClient } from '@/lib/api/client';
+import type { MultiLangNamed } from '@/lib/i18n/multiLang';
 
 export class InsurancePartnerNotConfiguredError extends Error {
   constructor() {
@@ -8,14 +9,16 @@ export class InsurancePartnerNotConfiguredError extends Error {
   }
 }
 
-export interface RelativeOption {
+// nameRu/nameEn/nameKy/nameZh (from MultiLangNamed) are populated by the
+// backend — see lib/i18n/multiLang.ts's localizedName()/localizedSearchText()
+// for how the frontend picks the right one to display/search by the active
+// UI locale.
+export interface RelativeOption extends MultiLangNamed {
   relative: number;
-  name: string;
 }
 
-export interface PeriodOption {
+export interface PeriodOption extends MultiLangNamed {
   period: number;
-  name: string;
 }
 
 const NOT_CONFIGURED_CODE = 'INSURANCE_PARTNER_NOT_CONFIGURED';

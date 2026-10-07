@@ -4,12 +4,9 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PolicyVerification } from '@/types';
 import { verifyPolicy } from '@/lib/api/verify';
+import { formatDate } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { AuthShell } from '@/components/AuthShell';
-
-function formatDate(date: string | null): string {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString('uz-UZ');
-}
 
 export default function VerifyPolicyPage({
   params,
@@ -17,6 +14,7 @@ export default function VerifyPolicyPage({
   params: Promise<{ policyNumber: string }>;
 }) {
   const { policyNumber } = use(params);
+  const { t, locale } = useTranslation();
   const [result, setResult] = useState<PolicyVerification | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,16 +24,19 @@ export default function VerifyPolicyPage({
       try {
         setResult(await verifyPolicy(policyNumber));
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Tekshirishda xatolik yuz berdi');
+        setError(err instanceof Error ? err.message : t('verifyPolicy.checkError'));
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [policyNumber]);
 
+  const formatPolicyDate = (date: string | null) => (date ? formatDate(date, locale) : '-');
+
   return (
-    <AuthShell title="Polisni tekshirish" subtitle="OSAGO polisining haqiqiyligini onlayn tekshiring">
-      {loading && <p className="text-sm text-slate-500">Tekshirilmoqda...</p>}
+    <AuthShell title={t('verifyPolicy.title')} subtitle={t('verifyPolicy.subtitle')}>
+      {loading && <p className="text-sm text-slate-500">{t('verifyPolicy.checking')}</p>}
 
       {!loading && error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-900/40 dark:bg-red-950/30">
@@ -71,7 +72,7 @@ export default function VerifyPolicyPage({
             </span>
             <div>
               <p className={`text-base font-bold ${result.valid ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                {result.valid ? 'Polis haqiqiy va amalda' : 'Polis amal qilmaydi'}
+                {result.valid ? t('verifyPolicy.valid') : t('verifyPolicy.invalid')}
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">{result.policyNumber}</p>
             </div>
@@ -79,13 +80,13 @@ export default function VerifyPolicyPage({
 
           <dl className="mt-6 grid grid-cols-2 gap-5 border-t border-slate-200/60 pt-5 text-sm dark:border-white/10">
             <div>
-              <dt className="text-slate-400">Davlat raqami</dt>
+              <dt className="text-slate-400">{t('verifyPolicy.plateNumber')}</dt>
               <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{result.plateNumber ?? '-'}</dd>
             </div>
             <div>
-              <dt className="text-slate-400">Amal qilish muddati</dt>
+              <dt className="text-slate-400">{t('verifyPolicy.validity')}</dt>
               <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-                {formatDate(result.validFrom)} — {formatDate(result.validTo)}
+                {formatPolicyDate(result.validFrom)} — {formatPolicyDate(result.validTo)}
               </dd>
             </div>
           </dl>
@@ -96,7 +97,7 @@ export default function VerifyPolicyPage({
         <Link href="/" className="font-semibold text-orange-600 hover:underline">
           OSAGO Online
         </Link>{' '}
-        tizimiga qaytish
+        {t('verifyPolicy.backToSystem')}
       </p>
     </AuthShell>
   );

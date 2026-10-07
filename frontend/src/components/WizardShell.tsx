@@ -1,7 +1,9 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import { STEP_LABELS, TOTAL_STEPS } from '@/lib/constants';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { ExitToMenuButton } from '@/components/ExitToMenuButton';
 
 interface WizardShellProps {
@@ -13,6 +15,7 @@ interface WizardShellProps {
 }
 
 export function WizardShell({ currentStep, title, subtitle, children, wide }: WizardShellProps) {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 lg:flex">
       <aside className="sticky top-0 hidden h-screen w-80 shrink-0 flex-col justify-between bg-slate-950 px-10 py-12 text-white lg:flex">
@@ -52,9 +55,9 @@ export function WizardShell({ currentStep, title, subtitle, children, wide }: Wi
               const stepLabelBlock = (
                 <div className="pt-1.5">
                   <p className={`text-sm font-semibold ${isActive ? 'text-white' : isCompleted ? 'text-slate-300' : 'text-slate-500'}`}>
-                    {step.label}
+                    {t(step.labelKey)}
                   </p>
-                  {isActive && <p className="mt-0.5 text-xs text-orange-400">Joriy qadam</p>}
+                  {isActive && <p className="mt-0.5 text-xs text-orange-400">{t('wizardShell.currentStep')}</p>}
                 </div>
               );
 
@@ -68,7 +71,7 @@ export function WizardShell({ currentStep, title, subtitle, children, wide }: Wi
                   </div>
                   {isCompleted ? (
                     <Link href={step.path} className="pt-1.5 transition-opacity hover:opacity-80">
-                      <p className="text-sm font-semibold text-slate-300">{step.label}</p>
+                      <p className="text-sm font-semibold text-slate-300">{t(step.labelKey)}</p>
                     </Link>
                   ) : (
                     stepLabelBlock
@@ -79,19 +82,24 @@ export function WizardShell({ currentStep, title, subtitle, children, wide }: Wi
           </ol>
         </div>
 
-        <p className="text-xs text-slate-500">© {new Date().getFullYear()} OSAGO Online. Barcha huquqlar himoyalangan.</p>
+        <p className="text-xs text-slate-500">{t('common.copyright', { year: new Date().getFullYear() })}</p>
       </aside>
 
       <main className="flex-1 px-6 py-10 lg:px-16 lg:py-14">
         <div className={wide ? 'mx-auto max-w-4xl' : 'mx-auto max-w-2xl'}>
           <div className="mb-4 flex items-center justify-between">
             <ExitToMenuButton />
-            <ThemeToggle />
+            <div className="flex items-center gap-1">
+              <LanguageSwitcher />
+              <ThemeToggle />
+            </div>
           </div>
           <div className="mb-8 flex items-center justify-between lg:hidden">
-            <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">{STEP_LABELS[currentStep - 1]?.label}</span>
+            <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+              {STEP_LABELS[currentStep - 1] && t(STEP_LABELS[currentStep - 1].labelKey)}
+            </span>
             <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
-              {currentStep}/{TOTAL_STEPS}-qadam
+              {t('wizardShell.stepIndicator', { current: currentStep, total: TOTAL_STEPS })}
             </span>
           </div>
           <div className="mb-2 h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-800 lg:hidden">

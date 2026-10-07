@@ -35,7 +35,12 @@ export class PartnerSubmission {
   @JoinColumn({ name: 'policyId' })
   policy: InsurancePolicy;
 
-  @Column()
+  // One partner submission per policy — mirrors ApexBoxSubmission.policyId.
+  // Without this, the legacy local-charge path and the real
+  // submitPolicy() flow could each insert their own row for the same
+  // policy, leaving findOne({ where: { policyId } }) callers to pick
+  // whichever one TypeORM happens to return.
+  @Column({ unique: true })
   policyId: string;
 
   @Generated('increment')

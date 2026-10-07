@@ -7,12 +7,14 @@ import {
   ChangePasswordFormData,
   getChangePasswordSchema,
   UpdateProfileFormData,
-  updateProfileSchema,
+  getUpdateProfileSchema,
 } from '@/lib/validation/schemas';
 import { InsurancePolicy, User, Vehicle } from '@/types';
 import { changePassword, confirmEmailChange, requestEmailChange, updateProfile } from '@/lib/api/auth';
 import { listVehicles } from '@/lib/api/vehicles';
 import { listPolicies } from '@/lib/api/policies';
+import { todayLocalDateString } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuthStore } from '@/store/authStore';
 import { useAccountsStore } from '@/store/accountsStore';
 import { useAccountSwitch } from '@/hooks/useAccountSwitch';
@@ -25,9 +27,8 @@ import { Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import Link from 'next/link';
 
-const WEIGHT_LABEL: Record<string, string> = { yengil: 'Yengil', "og'ir": "Og'ir" };
-
 function ExpiryBanner({ policies }: { policies: InsurancePolicy[] }) {
+  const { t } = useTranslation();
   const now = new Date();
   const soonest = policies
     .filter((p) => p.status === 'paid' && p.validTo)
@@ -54,11 +55,11 @@ function ExpiryBanner({ policies }: { policies: InsurancePolicy[] }) {
       <div className="min-w-0 flex-1">
         <p className={`text-sm font-semibold ${expired ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
           {expired
-            ? `${soonest.policy.policyNumber} raqamli polisingiz muddati tugagan`
-            : `${soonest.policy.policyNumber} raqamli polisingiz muddati ${soonest.daysLeft} kundan so'ng tugaydi`}
+            ? t('profile.expiredNotice', { policyNumber: soonest.policy.policyNumber ?? '' })
+            : t('profile.expiringNotice', { policyNumber: soonest.policy.policyNumber ?? '', days: soonest.daysLeft })}
         </p>
         <p className={`text-xs ${expired ? 'text-red-600/80 dark:text-red-400/80' : 'text-amber-600/80 dark:text-amber-400/80'}`}>
-          {soonest.policy.vehicle.plateNumber} · Yangi polis rasmiylashtirishni unutmang
+          {soonest.policy.vehicle.plateNumber} · {t('profile.expiryNote')}
         </p>
       </div>
       <Link
@@ -67,13 +68,14 @@ function ExpiryBanner({ policies }: { policies: InsurancePolicy[] }) {
           expired ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-amber-500 text-white hover:bg-amber-600'
         }`}
       >
-        Yangilash
+        {t('profile.renew')}
       </Link>
     </div>
   );
 }
 
 function PersonalInfoCard({ user }: { user: User }) {
+  const { t } = useTranslation();
   const updateUser = useAuthStore((s) => s.updateUser);
   const [editing, setEditing] = useState(false);
 
@@ -83,7 +85,7 @@ function PersonalInfoCard({ user }: { user: User }) {
     reset,
     formState: { errors, isSubmitting },
   } = useForm<UpdateProfileFormData>({
-    resolver: zodResolver(updateProfileSchema),
+    resolver: zodResolver(getUpdateProfileSchema(t)),
     defaultValues: {
       fullName: user.fullName,
       phone: user.phone ?? '',
@@ -106,10 +108,10 @@ function PersonalInfoCard({ user }: { user: User }) {
         birthDate: data.birthDate || undefined,
       });
       updateUser(updated);
-      toast.success('Profil yangilandi');
+      toast.success(t('profile.profileUpdatedToast'));
       setEditing(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Profilni saqlashda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('profile.profileSaveError'));
     }
   };
 
@@ -142,7 +144,7 @@ function PersonalInfoCard({ user }: { user: User }) {
             onClick={() => setEditing(true)}
             className="rounded-lg px-3 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-500/10"
           >
-            Tahrirlash
+            {t('profile.edit')}
           </button>
         )}
       </div>
@@ -155,29 +157,29 @@ function PersonalInfoCard({ user }: { user: User }) {
             <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.16.28-1.7V4.97H.98A9 9 0 0 0 0 9c0 1.45.35 2.83.98 4.03l2.97-2.33Z" />
             <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .98 4.97l2.97 2.33C4.66 5.17 6.65 3.58 9 3.58Z" />
           </svg>
-          Google orqali ulangan
+          {t('profile.googleLinked')}
         </div>
       )}
 
       {editing ? (
         <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4 border-t border-slate-100 pt-5 dark:border-slate-800">
-          <Input label="F.I.O." error={errors.fullName?.message} {...register('fullName')} />
-          <Input label="Telefon (ixtiyoriy)" placeholder="+998901234567" error={errors.phone?.message} {...register('phone')} />
+          <Input label={t('profile.fullName')} error={errors.fullName?.message} {...register('fullName')} />
+          <Input label={t('profile.phoneOptional')} placeholder="+998901234567" error={errors.phone?.message} {...register('phone')} />
 
           <div>
-            <p className="mb-3 text-xs font-semibold tracking-wide text-slate-400 uppercase">Pasport ma&apos;lumotlari</p>
+            <p className="mb-3 text-xs font-semibold tracking-wide text-slate-400 uppercase">{t('profile.passportSectionTitle')}</p>
             <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-              OSAGO polisini rasman rasmiylashtirish uchun kerak bo&apos;ladi — hozircha ixtiyoriy.
+              {t('profile.passportSectionNote')}
             </p>
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Pasport seriyasi" placeholder="AB" error={errors.passportSeries?.message} {...register('passportSeries')} />
-              <Input label="Pasport raqami" placeholder="1234567" error={errors.passportNumber?.message} {...register('passportNumber')} />
+              <Input label={t('profile.passportSeries')} placeholder="AB" error={errors.passportSeries?.message} {...register('passportSeries')} />
+              <Input label={t('profile.passportNumber')} placeholder="1234567" error={errors.passportNumber?.message} {...register('passportNumber')} />
             </div>
             <div className="mt-4">
               <Input
-                label="Tug'ilgan sana"
+                label={t('profile.birthDate')}
                 type="date"
-                max={new Date().toISOString().split('T')[0]}
+                max={todayLocalDateString()}
                 error={errors.birthDate?.message}
                 {...register('birthDate')}
               />
@@ -186,33 +188,33 @@ function PersonalInfoCard({ user }: { user: User }) {
 
           <div className="flex gap-3">
             <Button type="submit" variant="primary" isLoading={isSubmitting} className="px-6">
-              Saqlash
+              {t('profile.save')}
             </Button>
             <Button type="button" variant="outline" onClick={cancelEdit}>
-              Bekor qilish
+              {t('common.cancel')}
             </Button>
           </div>
         </form>
       ) : (
         <dl className="mt-6 grid grid-cols-2 gap-5 border-t border-slate-100 pt-5 text-sm dark:border-slate-800">
           <div>
-            <dt className="text-slate-400">Telefon</dt>
+            <dt className="text-slate-400">{t('profile.phone')}</dt>
             <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{user.phone ?? '-'}</dd>
           </div>
           <div>
-            <dt className="text-slate-400">Rezident turi</dt>
+            <dt className="text-slate-400">{t('profile.residentTypeLabel')}</dt>
             <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-              {user.residentType === 'non_resident' ? 'Norezident' : user.residentType === 'resident' ? 'Rezident' : '-'}
+              {user.residentType === 'non_resident' ? t('profile.nonResident') : user.residentType === 'resident' ? t('profile.resident') : '-'}
             </dd>
           </div>
           <div>
-            <dt className="text-slate-400">Pasport</dt>
+            <dt className="text-slate-400">{t('profile.passport')}</dt>
             <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">
               {user.passportSeries && user.passportNumber ? `${user.passportSeries} ${user.passportNumber}` : '-'}
             </dd>
           </div>
           <div>
-            <dt className="text-slate-400">Tug&apos;ilgan sana</dt>
+            <dt className="text-slate-400">{t('profile.birthDate')}</dt>
             <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{user.birthDate ?? '-'}</dd>
           </div>
         </dl>
@@ -225,6 +227,7 @@ function PersonalInfoCard({ user }: { user: User }) {
 // (guest.<uuid>@guest.borderinsurance.uz), shuning uchun bu yerda
 // haqiqiy email qo'shish va tasdiqlash imkoniyati beriladi.
 function EmailVerificationCard({ user }: { user: User }) {
+  const { t } = useTranslation();
   const updateUser = useAuthStore((s) => s.updateUser);
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -236,16 +239,16 @@ function EmailVerificationCard({ user }: { user: User }) {
 
   const handleSendCode = async () => {
     if (!email.trim()) {
-      toast.error('Email kiriting');
+      toast.error(t('profile.emailRequired'));
       return;
     }
     setIsSending(true);
     try {
       await requestEmailChange(email.trim());
-      toast.success('Tasdiqlash kodi emailingizga yuborildi');
+      toast.success(t('profile.verificationSentToast'));
       setCodeSent(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Kod yuborishda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('profile.sendCodeError'));
     } finally {
       setIsSending(false);
     }
@@ -253,19 +256,19 @@ function EmailVerificationCard({ user }: { user: User }) {
 
   const handleConfirm = async () => {
     if (!/^\d{6}$/.test(code)) {
-      toast.error('Kod 6 ta raqamdan iborat bo\'lishi kerak');
+      toast.error(t('profile.codeLengthError'));
       return;
     }
     setIsConfirming(true);
     try {
       const updated = await confirmEmailChange(code);
       updateUser(updated);
-      toast.success('Email tasdiqlandi');
+      toast.success(t('profile.emailVerifiedToast'));
       setCodeSent(false);
       setEmail('');
       setCode('');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Kodni tasdiqlashda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('profile.codeVerifyError'));
     } finally {
       setIsConfirming(false);
     }
@@ -273,9 +276,9 @@ function EmailVerificationCard({ user }: { user: User }) {
 
   return (
     <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Email qo&apos;shish</h2>
+      <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('profile.addEmailTitle')}</h2>
       <p className="mt-1 text-xs text-slate-400">
-        Mehmon sifatida kirgansiz — hisobingizni saqlab qolish uchun haqiqiy email qo&apos;shib, tasdiqlang.
+        {t('profile.addEmailNote')}
       </p>
 
       {!codeSent ? (
@@ -287,23 +290,23 @@ function EmailVerificationCard({ user }: { user: User }) {
             className="flex-1"
           />
           <Button type="button" variant="primary" isLoading={isSending} onClick={handleSendCode} className="sm:px-6">
-            Kod yuborish
+            {t('profile.sendCode')}
           </Button>
         </div>
       ) : (
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           <Input
-            placeholder="6 xonali kod"
+            placeholder={t('profile.codePlaceholder')}
             inputMode="numeric"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             className="flex-1"
           />
           <Button type="button" variant="primary" isLoading={isConfirming} onClick={handleConfirm} className="sm:px-6">
-            Tasdiqlash
+            {t('profile.confirm')}
           </Button>
           <Button type="button" variant="ghost" onClick={() => setCodeSent(false)}>
-            Emailni o&apos;zgartirish
+            {t('profile.changeEmail')}
           </Button>
         </div>
       )}
@@ -312,59 +315,60 @@ function EmailVerificationCard({ user }: { user: User }) {
 }
 
 function PasswordCard({ user }: { user: User }) {
+  const { t } = useTranslation();
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ChangePasswordFormData>({
-    resolver: zodResolver(getChangePasswordSchema(!!user.hasPassword)),
+    resolver: zodResolver(getChangePasswordSchema(!!user.hasPassword, t)),
     defaultValues: { currentPassword: '', newPassword: '', confirmNewPassword: '' },
   });
 
   const onSubmit = async (data: ChangePasswordFormData) => {
     try {
       await changePassword({ currentPassword: data.currentPassword, newPassword: data.newPassword });
-      toast.success(user.hasPassword ? 'Parol yangilandi' : 'Parol o\'rnatildi');
+      toast.success(user.hasPassword ? t('profile.passwordUpdatedToast') : t('profile.passwordSetToast'));
       reset();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Parolni saqlashda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('profile.passwordSaveError'));
     }
   };
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
       <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-        {user.hasPassword ? 'Parolni almashtirish' : 'Parol o\'rnatish'}
+        {user.hasPassword ? t('profile.changePasswordTitle') : t('profile.setPasswordTitle')}
       </h2>
       {!user.hasPassword && (
         <p className="mt-1 text-xs text-slate-400">
-          Hisobingiz Google orqali yaratilgan. Parol o&apos;rnatsangiz, email va parol bilan ham kira olasiz.
+          {t('profile.setPasswordNote')}
         </p>
       )}
       <form onSubmit={handleSubmit(onSubmit)} className="mt-4 flex flex-col gap-4">
         {user.hasPassword && (
           <PasswordInput
-            label="Joriy parol"
-            placeholder="Joriy parolingiz"
+            label={t('profile.currentPassword')}
+            placeholder={t('profile.currentPasswordPlaceholder')}
             error={errors.currentPassword?.message}
             {...register('currentPassword')}
           />
         )}
         <PasswordInput
-          label="Yangi parol"
-          placeholder="Kamida 6 ta belgi"
+          label={t('profile.newPassword')}
+          placeholder={t('profile.newPasswordPlaceholder')}
           error={errors.newPassword?.message}
           {...register('newPassword')}
         />
         <PasswordInput
-          label="Yangi parolni tasdiqlang"
-          placeholder="Yangi parolni qayta kiriting"
+          label={t('profile.confirmNewPassword')}
+          placeholder={t('profile.confirmNewPasswordPlaceholder')}
           error={errors.confirmNewPassword?.message}
           {...register('confirmNewPassword')}
         />
         <Button type="submit" variant="primary" isLoading={isSubmitting} className="self-start px-6">
-          {user.hasPassword ? 'Parolni yangilash' : 'Parolni o\'rnatish'}
+          {user.hasPassword ? t('profile.updatePassword') : t('profile.setPassword')}
         </Button>
       </form>
     </div>
@@ -372,26 +376,29 @@ function PasswordCard({ user }: { user: User }) {
 }
 
 function VehiclesCard() {
+  const { t } = useTranslation();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const weightLabel: Record<string, string> = { yengil: t('profile.weightLight'), "og'ir": t('profile.weightHeavy') };
 
   useEffect(() => {
     (async () => {
       try {
         setVehicles(await listVehicles());
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Avtomobillarni olishda xatolik yuz berdi');
+        toast.error(err instanceof Error ? err.message : t('profile.vehiclesFetchError'));
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Mening avtomobillarim</h2>
-      {loading && <p className="text-sm text-slate-500">Yuklanmoqda...</p>}
-      {!loading && vehicles.length === 0 && <p className="text-sm text-slate-400">Hozircha avtomobil qo&apos;shilmagan</p>}
+      <h2 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('profile.myVehicles')}</h2>
+      {loading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
+      {!loading && vehicles.length === 0 && <p className="text-sm text-slate-400">{t('profile.noVehicles')}</p>}
       <div className="flex flex-col gap-2">
         {vehicles.map((vehicle) => (
           <div key={vehicle.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800">
@@ -400,7 +407,7 @@ function VehiclesCard() {
               <p className="text-xs text-slate-500 dark:text-slate-400">{vehicle.city ? `${vehicle.model} · ${vehicle.city}` : vehicle.model}</p>
             </div>
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 dark:bg-white/5 dark:text-slate-400">
-              {WEIGHT_LABEL[vehicle.weightCategory] ?? vehicle.weightCategory}
+              {weightLabel[vehicle.weightCategory] ?? vehicle.weightCategory}
             </span>
           </div>
         ))}
@@ -410,13 +417,14 @@ function VehiclesCard() {
 }
 
 function ConnectedAccountsCard({ currentUserId }: { currentUserId: string }) {
+  const { t } = useTranslation();
   const accounts = useAccountsStore((s) => s.accounts);
   const removeAccount = useAccountsStore((s) => s.removeAccount);
   const { select, switchingUserId } = useAccountSwitch('/policies');
 
   return (
     <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Bog&apos;langan hisoblar</h2>
+      <h2 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('profile.connectedAccounts')}</h2>
       <AccountSwitcherList
         accounts={accounts}
         currentUserId={currentUserId}
@@ -433,13 +441,14 @@ function ConnectedAccountsCard({ currentUserId }: { currentUserId: string }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
         </span>
-        Boshqa hisob qo&apos;shish
+        {t('profile.addAnotherAccount')}
       </Link>
     </div>
   );
 }
 
 function ProfileContent({ user }: { user: User }) {
+  const { t } = useTranslation();
   const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
 
   useEffect(() => {
@@ -454,8 +463,8 @@ function ProfileContent({ user }: { user: User }) {
 
   return (
     <>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Profil</h1>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Shaxsiy ma&apos;lumotlaringiz, xavfsizlik va to&apos;lov sozlamalari</p>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('profile.title')}</h1>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('profile.subtitle')}</p>
 
       <div className="mt-6">
         <ExpiryBanner policies={policies} />

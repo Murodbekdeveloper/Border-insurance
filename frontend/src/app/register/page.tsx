@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { RegisterFormData, registerSchema } from '@/lib/validation/schemas';
+import { RegisterFormData, getRegisterSchema } from '@/lib/validation/schemas';
 import { maskLetters, maskPhoneUZ } from '@/lib/masks';
 import { register as registerUser, loginAsGuest } from '@/lib/api/auth';
 import { API_URL } from '@/lib/api/client';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { toast } from '@/store/toastStore';
 import { useAuthStore } from '@/store/authStore';
 import { AuthShell } from '@/components/AuthShell';
@@ -18,6 +19,7 @@ import { Button } from '@/components/ui/Button';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const setSession = useAuthStore((s) => s.setSession);
   const [isGuestLoading, setIsGuestLoading] = useState(false);
 
@@ -27,7 +29,7 @@ export default function RegisterPage() {
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(getRegisterSchema(t)),
     defaultValues: { fullName: '', email: '', phone: '+998', password: '', confirmPassword: '' },
   });
 
@@ -35,10 +37,10 @@ export default function RegisterPage() {
     try {
       const email = data.email.trim();
       await registerUser(data);
-      toast.success('Tasdiqlash kodi emailingizga yuborildi');
+      toast.success(t('register.verificationSentToast'));
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Ro\'yxatdan o\'tishda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('register.registerError'));
     }
   };
 
@@ -51,17 +53,17 @@ export default function RegisterPage() {
     try {
       const result = await loginAsGuest();
       setSession(result.user, result.accessToken, result.refreshToken);
-      toast.success('Mehmon sifatida kirdingiz');
+      toast.success(t('register.guestLoggedInToast'));
       router.push('/policies');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Mehmon sifatida kirishda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('register.guestLoginError'));
     } finally {
       setIsGuestLoading(false);
     }
   };
 
   return (
-    <AuthShell title="Ro'yxatdan o'tish" subtitle="Yangi hisob yarating">
+    <AuthShell title={t('register.title')} subtitle={t('register.subtitle')}>
       <div className="flex flex-col gap-4">
         <Button type="button" variant="google" fullWidth onClick={handleGoogleRegister}>
           <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
@@ -70,34 +72,34 @@ export default function RegisterPage() {
             <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.16.28-1.7V4.97H.98A9 9 0 0 0 0 9c0 1.45.35 2.83.98 4.03l2.97-2.33Z" />
             <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .98 4.97l2.97 2.33C4.66 5.17 6.65 3.58 9 3.58Z" />
           </svg>
-          Google orqali ro&apos;yxatdan o&apos;tish
+          {t('register.googleRegister')}
         </Button>
 
         <div className="flex items-center gap-3 text-xs text-slate-400">
           <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-          yoki
+          {t('register.or')}
           <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
         </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="mt-4 flex flex-col gap-4">
         <Input
-          label="F.I.O."
-          placeholder="To'liq ism-sharifingiz"
+          label={t('register.fullName')}
+          placeholder={t('register.fullNamePlaceholder')}
           error={errors.fullName?.message}
           {...registerField('fullName')}
           onChange={(e) => setValue('fullName', maskLetters(e.target.value, 60), { shouldValidate: true, shouldDirty: true })}
         />
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Email"
+            label={t('register.email')}
             type="email"
             placeholder="email@example.com"
             error={errors.email?.message}
             {...registerField('email')}
           />
           <Input
-            label="Telefon raqami (ixtiyoriy)"
+            label={t('register.phone')}
             placeholder="+998901234567"
             inputMode="numeric"
             error={errors.phone?.message}
@@ -107,27 +109,27 @@ export default function RegisterPage() {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <PasswordInput
-            label="Parol"
-            placeholder="Kamida 6 ta belgi"
+            label={t('register.password')}
+            placeholder={t('register.passwordPlaceholder')}
             error={errors.password?.message}
             {...registerField('password')}
           />
           <PasswordInput
-            label="Parolni tasdiqlang"
-            placeholder="Parolni qayta kiriting"
+            label={t('register.confirmPassword')}
+            placeholder={t('register.confirmPasswordPlaceholder')}
             error={errors.confirmPassword?.message}
             {...registerField('confirmPassword')}
           />
         </div>
 
         <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting}>
-          Ro&apos;yxatdan o&apos;tish
+          {t('register.submit')}
         </Button>
       </form>
 
       <div className="mt-4 flex items-center gap-3 text-xs text-slate-400">
         <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-        yoki
+        {t('register.or')}
         <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
       </div>
 
@@ -139,13 +141,13 @@ export default function RegisterPage() {
         onClick={handleGuestLogin}
         className="mt-4"
       >
-        Mehmon sifatida kirish
+        {t('register.guestLogin')}
       </Button>
 
       <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
-        Hisobingiz bormi?{' '}
+        {t('register.haveAccount')}{' '}
         <Link href="/login" className="font-semibold text-orange-600 hover:underline">
-          Kirish
+          {t('register.login')}
         </Link>
       </p>
     </AuthShell>

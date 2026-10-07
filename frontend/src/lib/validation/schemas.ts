@@ -1,130 +1,142 @@
 import { z } from 'zod';
+import { isNotFutureLocalDate } from '@/lib/utils';
+import type { Translator } from '@/lib/i18n/useTranslation';
 
 const phoneRegex = /^\+998[0-9]{9}$/;
 const alphanumericRegex = /^[A-Za-z0-9]+$/;
 const passportSeriesRegex = /^[A-Z]{2}$/;
 const passportNumberRegex = /^[0-9]{7}$/;
 
-export const loginSchema = z.object({
-  email: z.string().min(1, 'Email kiritilishi shart').email('Email formati noto\'g\'ri'),
-  password: z.string().min(1, 'Parol kiritilishi shart'),
-});
-export type LoginFormData = z.infer<typeof loginSchema>;
+export function getLoginSchema(t: Translator) {
+  return z.object({
+    email: z.string().min(1, t('validation.emailRequired')).email(t('validation.emailInvalid')),
+    password: z.string().min(1, t('validation.passwordRequired')),
+  });
+}
+export type LoginFormData = z.infer<ReturnType<typeof getLoginSchema>>;
 
 // Faqat email majburiy — telefon ixtiyoriy, shuning uchun bo'sh yoki hali
 // to'ldirilmagan "+998" prefiksi ham qabul qilinadi; kiritilgan bo'lsa,
 // to'liq formatga mos kelishi kerak.
-export const registerSchema = z
-  .object({
-    fullName: z.string().min(3, 'To\'liq ism-sharif kiritilishi shart'),
-    email: z.string().min(1, 'Email kiritilishi shart').email('Email formati noto\'g\'ri'),
-    phone: z
-      .string()
-      .refine((val) => !val || val === '+998' || phoneRegex.test(val), {
-        message: 'Telefon raqami +998XXXXXXXXX formatida bo\'lishi kerak',
-      }),
-    password: z.string().min(6, 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak'),
-    confirmPassword: z.string().min(1, 'Parolni tasdiqlang'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Parollar mos kelmadi',
-    path: ['confirmPassword'],
-  });
-export type RegisterFormData = z.infer<typeof registerSchema>;
+export function getRegisterSchema(t: Translator) {
+  return z
+    .object({
+      fullName: z.string().min(3, t('validation.fullNameRequired')),
+      email: z.string().min(1, t('validation.emailRequired')).email(t('validation.emailInvalid')),
+      phone: z
+        .string()
+        .refine((val) => !val || val === '+998' || phoneRegex.test(val), {
+          message: t('validation.phoneFormat'),
+        }),
+      password: z.string().min(6, t('validation.passwordMinLength')),
+      confirmPassword: z.string().min(1, t('validation.confirmPasswordRequired')),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t('validation.passwordsMismatch'),
+      path: ['confirmPassword'],
+    });
+}
+export type RegisterFormData = z.infer<ReturnType<typeof getRegisterSchema>>;
 
 const currentYear = new Date().getFullYear();
 
-export const vehicleSchema = z.object({
-  weightCategory: z.enum(['yengil', 'og\'ir'], { message: 'Og\'irlik toifasini tanlang' }),
-  registrationCountry: z.enum(['UZ', 'Xorij'], { message: 'Ro\'yxatga olingan davlatni tanlang' }),
-  plateNumber: z
-    .string()
-    .min(5, 'Davlat raqami to\'liq kiritilmagan')
-    .max(20, 'Davlat raqami juda uzun'),
-  techPassportSeries: z
-    .string()
-    .min(2, 'Texpasport seriyasi to\'liq kiritilmagan')
-    .max(10, 'Texpasport seriyasi juda uzun'),
-  techPassportNumber: z
-    .string()
-    .min(4, 'Texpasport raqami to\'liq kiritilmagan')
-    .max(20, 'Texpasport raqami juda uzun'),
-  model: z.string().min(1, 'Avtomobil modeli kiritilishi shart'),
-  vehicleType: z.string().min(1, 'Transport turini tanlang'),
-  techPassportIssueDate: z
-    .string()
-    .min(1, 'Texpasport berilgan sanasini kiriting')
-    .refine((val) => new Date(val) <= new Date(), 'Sana kelajakda bo\'lishi mumkin emas'),
-  manufactureYear: z
-    .string()
-    .regex(/^[0-9]{4}$/, 'Ishlab chiqarilgan yilini kiriting')
-    .refine((val) => Number(val) >= 1970, 'Yil 1970 dan katta bo\'lishi kerak')
-    .refine((val) => Number(val) <= currentYear, `Yil ${currentYear} dan katta bo'lishi mumkin emas`),
-  bodyNumber: z
-    .string()
-    .min(5, 'Kuzov raqami kamida 5 ta belgidan iborat bo\'lishi kerak')
-    .max(17, 'Kuzov raqami 17 ta belgidan oshmasligi kerak')
-    .regex(alphanumericRegex, 'Kuzov raqami faqat lotin harflar va raqamlardan iborat bo\'lishi kerak'),
-  engineNumber: z
-    .string()
-    .min(5, 'Dvigatel raqami kamida 5 ta belgidan iborat bo\'lishi kerak')
-    .max(17, 'Dvigatel raqami 17 ta belgidan oshmasligi kerak')
-    .regex(alphanumericRegex, 'Dvigatel raqami faqat lotin harflar va raqamlardan iborat bo\'lishi kerak'),
-  // Faqat registrationCountry "Xorij" bo'lganda kerak (Apex_Box'ga
-  // applicant.address sifatida yuboriladi) — O'zbekistonda ro'yxatdan
-  // o'tgan mashinalar uchun Asia Insurance'ning osago_v3 API'sida bunday
-  // maydon umuman yo'q.
-  city: z.string().optional(),
-  phone: z.string().regex(phoneRegex, 'Telefon raqami +998XXXXXXXXX formatida bo\'lishi kerak'),
-  // Sug'urta kompaniyasi transport egasi ma'lumotini alohida talab qiladi —
-  // odatda sug'urta oluvchining o'zi, shuning uchun standart holatda true.
-  // false bo'lganda quyidagi uchta maydon to'ldirilishi shart.
-  ownerIsApplicant: z.boolean(),
-  ownerPassportSeries: z.string().optional(),
-  ownerPassportNumber: z.string().optional(),
-  ownerBirthDate: z.string().optional(),
-  // Faqat registrationCountry "Xorij" bo'lganda kerak — Apex_Box orqali
-  // yuboriladigan sug'urta muddati (GET /apex-box/foreign-vehicle-durations).
-  foreignPolicyDurationId: z.string().optional(),
-  // Oynali juftlashuv — faqat registrationCountry "UZ" bo'lganda kerak
-  // (GET /insurance-partner/periods, osago_v3'ning /get-period'i).
-  periodId: z.string().optional(),
-}).superRefine((data, ctx) => {
-  if (data.registrationCountry === 'Xorij') {
-    if (!data.foreignPolicyDurationId) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Sug'urta muddatini tanlang", path: ['foreignPolicyDurationId'] });
-    }
-    if (!data.city) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Manzilni kiriting', path: ['city'] });
-    }
-  } else if (!data.periodId) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Sug'urta muddatini tanlang", path: ['periodId'] });
-  }
-  if (data.ownerIsApplicant) return;
-  if (!data.ownerPassportSeries) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Egasining pasport seriyasini kiriting', path: ['ownerPassportSeries'] });
-  }
-  if (!data.ownerPassportNumber) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Egasining pasport raqamini kiriting', path: ['ownerPassportNumber'] });
-  }
-  if (!data.ownerBirthDate) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Egasining tug\'ilgan sanasini kiriting', path: ['ownerBirthDate'] });
-  } else if (new Date(data.ownerBirthDate) > new Date()) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Sana kelajakda bo\'lishi mumkin emas', path: ['ownerBirthDate'] });
-  }
-});
-export type VehicleFormData = z.infer<typeof vehicleSchema>;
+export function getVehicleSchema(t: Translator) {
+  return z
+    .object({
+      weightCategory: z.enum(['yengil', "og'ir"], { message: t('validation.weightCategoryRequired') }),
+      registrationCountry: z.enum(['UZ', 'Xorij'], { message: t('validation.registrationCountryRequired') }),
+      plateNumber: z
+        .string()
+        .min(5, t('validation.plateNumberIncomplete'))
+        .max(20, t('validation.plateNumberTooLong')),
+      techPassportSeries: z
+        .string()
+        .min(2, t('validation.techPassportSeriesIncomplete'))
+        .max(10, t('validation.techPassportSeriesTooLong')),
+      techPassportNumber: z
+        .string()
+        .min(4, t('validation.techPassportNumberIncomplete'))
+        .max(20, t('validation.techPassportNumberTooLong')),
+      model: z.string().min(1, t('validation.modelRequired')),
+      vehicleType: z.string().min(1, t('validation.vehicleTypeRequired')),
+      techPassportIssueDate: z
+        .string()
+        .min(1, t('validation.techPassportIssueDateRequired'))
+        .refine((val) => isNotFutureLocalDate(val), t('validation.dateNotFuture')),
+      manufactureYear: z
+        .string()
+        .regex(/^[0-9]{4}$/, t('validation.manufactureYearFormat'))
+        .refine((val) => Number(val) >= 1970, t('validation.manufactureYearMin'))
+        .refine((val) => Number(val) <= currentYear, t('validation.manufactureYearMax', { year: currentYear })),
+      bodyNumber: z
+        .string()
+        .min(5, t('validation.bodyNumberMinLength'))
+        .max(17, t('validation.bodyNumberMaxLength'))
+        .regex(alphanumericRegex, t('validation.bodyNumberAlphanumeric')),
+      engineNumber: z
+        .string()
+        .min(5, t('validation.engineNumberMinLength'))
+        .max(17, t('validation.engineNumberMaxLength'))
+        .regex(alphanumericRegex, t('validation.engineNumberAlphanumeric')),
+      // Faqat registrationCountry "Xorij" bo'lganda kerak (Apex_Box'ga
+      // applicant.address sifatida yuboriladi) — O'zbekistonda ro'yxatdan
+      // o'tgan mashinalar uchun Asia Insurance'ning osago_v3 API'sida bunday
+      // maydon umuman yo'q.
+      city: z.string().optional(),
+      phone: z.string().regex(phoneRegex, t('validation.phoneFormat')),
+      // Sug'urta kompaniyasi transport egasi ma'lumotini alohida talab qiladi —
+      // odatda sug'urta oluvchining o'zi, shuning uchun standart holatda true.
+      // false bo'lganda quyidagi uchta maydon to'ldirilishi shart.
+      ownerIsApplicant: z.boolean(),
+      ownerPassportSeries: z.string().optional(),
+      ownerPassportNumber: z.string().optional(),
+      ownerBirthDate: z.string().optional(),
+      // Faqat registrationCountry "Xorij" bo'lganda kerak — Apex_Box orqali
+      // yuboriladigan sug'urta muddati (GET /apex-box/foreign-vehicle-durations).
+      foreignPolicyDurationId: z.string().optional(),
+      // Oynali juftlashuv — faqat registrationCountry "UZ" bo'lganda kerak
+      // (GET /insurance-partner/periods, osago_v3'ning /get-period'i).
+      periodId: z.string().optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.registrationCountry === 'Xorij') {
+        if (!data.foreignPolicyDurationId) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('validation.durationRequired'), path: ['foreignPolicyDurationId'] });
+        }
+        if (!data.city) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('validation.addressRequired'), path: ['city'] });
+        }
+      } else if (!data.periodId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('validation.durationRequired'), path: ['periodId'] });
+      }
+      if (data.ownerIsApplicant) return;
+      if (!data.ownerPassportSeries) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('validation.ownerPassportSeriesRequired'), path: ['ownerPassportSeries'] });
+      }
+      if (!data.ownerPassportNumber) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('validation.ownerPassportNumberRequired'), path: ['ownerPassportNumber'] });
+      }
+      if (!data.ownerBirthDate) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('validation.ownerBirthDateRequired'), path: ['ownerBirthDate'] });
+      } else if (!isNotFutureLocalDate(data.ownerBirthDate)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('validation.dateNotFuture'), path: ['ownerBirthDate'] });
+      }
+    });
+}
+export type VehicleFormData = z.infer<ReturnType<typeof getVehicleSchema>>;
 
-const driverBaseSchema = z.object({
-  fullName: z.string().min(3, 'F.I.O. kiritilishi shart'),
-  birthDate: z
-    .string()
-    .min(1, 'Tug\'ilgan sanani kiriting')
-    .refine((val) => new Date(val) <= new Date(), 'Sana kelajakda bo\'lishi mumkin emas'),
-  // Asia Insurance API hali ulanmagan bo'lsa forma bu maydonni ko'rsatmaydi
-  // — shuning uchun ixtiyoriy.
-  relativeId: z.number().optional(),
-});
+function getDriverBaseSchema(t: Translator) {
+  return z.object({
+    fullName: z.string().min(3, t('validation.driverFullNameRequired')),
+    birthDate: z
+      .string()
+      .min(1, t('validation.driverBirthDateRequired'))
+      .refine((val) => isNotFutureLocalDate(val), t('validation.dateNotFuture')),
+    // Asia Insurance API hali ulanmagan bo'lsa forma bu maydonni ko'rsatmaydi
+    // — shuning uchun ixtiyoriy.
+    relativeId: z.number().optional(),
+  });
+}
 
 // O'zbekiston pasporti "2 lotin harfi + 7 raqam" formatida bo'ladi, lekin chet
 // el fuqarolarining pasportlari bu formatga umuman to'g'ri kelmaydi — shuning
@@ -136,87 +148,110 @@ const driverBaseSchema = z.object({
 // osago_v3 /save-policy'sida guvohnoma maydoni umuman yo'q. Bu isForeign'dan
 // mustaqil — isForeign arizachining fuqaroligiga, requireLicense esa
 // mashinaning ro'yxatdan o'tgan davlatiga bog'liq.
-export function getDriverSchema(isForeign: boolean, requireLicense = true) {
-  return driverBaseSchema.extend({
+export function getDriverSchema(isForeign: boolean, requireLicense: boolean, t: Translator) {
+  return getDriverBaseSchema(t).extend({
     passportSeries: isForeign
-      ? z.string().min(1, 'Pasport seriyasi/kodini kiriting').max(10, 'Ko\'pi bilan 10 ta belgi')
+      ? z.string().min(1, t('validation.passportCodeRequired')).max(10, t('validation.maxLength10'))
       : z
           .string()
           .toUpperCase()
-          .regex(passportSeriesRegex, 'Seriya 2 ta lotin harfidan iborat bo\'lishi kerak (masalan, AA)'),
+          .regex(passportSeriesRegex, t('validation.passportSeriesFormat')),
     passportNumber: isForeign
-      ? z.string().min(3, 'Pasport raqamini kiriting').max(20, 'Ko\'pi bilan 20 ta belgi')
-      : z.string().regex(passportNumberRegex, 'Pasport raqami 7 ta raqamdan iborat bo\'lishi kerak'),
+      ? z.string().min(3, t('validation.passportNumberRequired')).max(20, t('validation.maxLength20'))
+      : z.string().regex(passportNumberRegex, t('validation.passportNumberFormat')),
     licenseNumber: requireLicense
-      ? z.string().min(1, 'Guvohnoma raqamini kiriting')
+      ? z.string().min(1, t('validation.licenseNumberRequired'))
       : z.string().optional(),
     licenseIssueDate: requireLicense
       ? z
           .string()
-          .min(1, 'Guvohnoma berilgan sanasini kiriting')
-          .refine((val) => new Date(val) <= new Date(), 'Sana kelajakda bo\'lishi mumkin emas')
+          .min(1, t('validation.licenseIssueDateRequired'))
+          .refine((val) => isNotFutureLocalDate(val), t('validation.dateNotFuture'))
       : z
           .string()
           .optional()
-          .refine((val) => !val || new Date(val) <= new Date(), 'Sana kelajakda bo\'lishi mumkin emas'),
+          .refine((val) => !val || isNotFutureLocalDate(val), t('validation.dateNotFuture')),
   });
 }
-export const driverSchema = getDriverSchema(false);
 export type DriverFormData = z.infer<ReturnType<typeof getDriverSchema>>;
 
-export function getDriverRestrictionSchema(isForeign: boolean, requireLicense = true) {
+// Validates each driver row only when driverRestriction === 'cheklangan' —
+// when 'cheklanmagan', a leftover/half-filled row from a previous toggle
+// (append(emptyDriver) on the way in, never removed on the way back out;
+// see driver-restriction/page.tsx) must not block submission, since its
+// content is irrelevant once the policy applies to any driver. Using
+// z.custom<DriverFormData>() at the array level (rather than
+// z.array(getDriverSchema(...))) means each item is never eagerly
+// validated against the full driver schema — it only shapes the inferred
+// TS type for react-hook-form/zodResolver. superRefine below opts back
+// into full per-item validation only in the 'cheklangan' branch.
+export function getDriverRestrictionSchema(isForeign: boolean, requireLicense: boolean, t: Translator) {
+  const driverSchema = getDriverSchema(isForeign, requireLicense, t);
   return z
     .object({
       driverRestriction: z.enum(['cheklangan', 'cheklanmagan']),
-      drivers: z.array(getDriverSchema(isForeign, requireLicense)),
+      drivers: z.array(z.custom<DriverFormData>()),
     })
-    .refine(
-      (data) => data.driverRestriction === 'cheklanmagan' || data.drivers.length > 0,
-      {
-        message: 'Kamida bitta haydovchi qo\'shilishi kerak',
-        path: ['drivers'],
-      },
-    );
+    .superRefine((data, ctx) => {
+      if (data.driverRestriction !== 'cheklangan') return;
+      if (data.drivers.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: t('validation.atLeastOneDriverRequired'),
+          path: ['drivers'],
+        });
+        return;
+      }
+      data.drivers.forEach((driver, index) => {
+        const result = driverSchema.safeParse(driver);
+        if (!result.success) {
+          for (const issue of result.error.issues) {
+            ctx.addIssue({ ...issue, path: ['drivers', index, ...issue.path] });
+          }
+        }
+      });
+    });
 }
-export const driverRestrictionSchema = getDriverRestrictionSchema(false);
 export type DriverRestrictionFormData = z.infer<ReturnType<typeof getDriverRestrictionSchema>>;
 
 // Passport+tug'ilgan sana — sug'urta kompaniyasi tomonidan "sug'urta oluvchi"
 // sifatida talab qilinadi. Hozircha ixtiyoriy: OSAGO'ni rasman ro'yxatga
 // olish integratsiyasi hali ulanmagan, lekin ma'lumot oldindan yig'ib
 // qo'yilsa, ulanganda foydalanuvchi qayta so'ralmaydi.
-export const updateProfileSchema = z.object({
-  fullName: z.string().min(3, 'To\'liq ism-sharif kiritilishi shart'),
-  phone: z
-    .string()
-    .optional()
-    .refine((val) => !val || phoneRegex.test(val), {
-      message: 'Telefon raqami +998XXXXXXXXX formatida bo\'lishi kerak',
-    }),
-  passportSeries: z.string().max(10, 'Ko\'pi bilan 10 ta belgi').optional().or(z.literal('')),
-  passportNumber: z.string().max(20, 'Ko\'pi bilan 20 ta belgi').optional().or(z.literal('')),
-  birthDate: z
-    .string()
-    .optional()
-    .or(z.literal(''))
-    .refine((val) => !val || new Date(val) <= new Date(), 'Sana kelajakda bo\'lishi mumkin emas'),
-});
-export type UpdateProfileFormData = z.infer<typeof updateProfileSchema>;
+export function getUpdateProfileSchema(t: Translator) {
+  return z.object({
+    fullName: z.string().min(3, t('validation.fullNameRequired')),
+    phone: z
+      .string()
+      .optional()
+      .refine((val) => !val || phoneRegex.test(val), {
+        message: t('validation.phoneFormat'),
+      }),
+    passportSeries: z.string().max(10, t('validation.maxLength10')).optional().or(z.literal('')),
+    passportNumber: z.string().max(20, t('validation.maxLength20')).optional().or(z.literal('')),
+    birthDate: z
+      .string()
+      .optional()
+      .or(z.literal(''))
+      .refine((val) => !val || isNotFutureLocalDate(val), t('validation.dateNotFuture')),
+  });
+}
+export type UpdateProfileFormData = z.infer<ReturnType<typeof getUpdateProfileSchema>>;
 
 // Joriy parol faqat foydalanuvchida allaqachon parol o'rnatilgan bo'lsagina
 // majburiy (masalan, Google orqali ro'yxatdan o'tgan va hali parol
 // o'rnatmagan foydalanuvchi uchun bu maydon ko'rsatilmaydi ham).
-export function getChangePasswordSchema(requireCurrentPassword: boolean) {
+export function getChangePasswordSchema(requireCurrentPassword: boolean, t: Translator) {
   return z
     .object({
       currentPassword: requireCurrentPassword
-        ? z.string().min(1, 'Joriy parolni kiriting')
+        ? z.string().min(1, t('validation.currentPasswordRequired'))
         : z.string().optional(),
-      newPassword: z.string().min(6, 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak'),
-      confirmNewPassword: z.string().min(1, 'Parolni tasdiqlang'),
+      newPassword: z.string().min(6, t('validation.passwordMinLength')),
+      confirmNewPassword: z.string().min(1, t('validation.confirmPasswordRequired')),
     })
     .refine((data) => data.newPassword === data.confirmNewPassword, {
-      message: 'Parollar mos kelmadi',
+      message: t('validation.passwordsMismatch'),
       path: ['confirmNewPassword'],
     });
 }

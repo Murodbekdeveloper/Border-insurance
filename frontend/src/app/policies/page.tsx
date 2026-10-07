@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { InsurancePolicy, User } from '@/types';
 import { getPolicyPdfBlob, listPolicies } from '@/lib/api/policies';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import type { TranslationKey } from '@/lib/i18n/useTranslation';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from '@/store/toastStore';
 import { AuthGuard } from '@/components/AuthGuard';
@@ -14,21 +16,21 @@ import { Select } from '@/components/ui/Select';
 
 type StatusFilter = InsurancePolicy['status'] | 'all';
 
-const STATUS_LABELS: Record<InsurancePolicy['status'], { label: string; className: string }> = {
-  draft: { label: 'Qoralama', className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
-  pending_payment: { label: 'To\'lov kutilmoqda', className: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' },
-  awaiting_partner_payment: { label: 'Sug\'urta kompaniyasida to\'lov kutilmoqda', className: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' },
-  paid: { label: 'To\'langan', className: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' },
-  cancelled: { label: 'Bekor qilingan', className: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' },
+const STATUS_LABELS: Record<InsurancePolicy['status'], { labelKey: TranslationKey; className: string }> = {
+  draft: { labelKey: 'policies.statusDraft', className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+  pending_payment: { labelKey: 'policies.statusPendingPayment', className: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' },
+  awaiting_partner_payment: { labelKey: 'policies.statusAwaitingPartnerPayment', className: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' },
+  paid: { labelKey: 'policies.statusPaid', className: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' },
+  cancelled: { labelKey: 'policies.statusCancelled', className: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' },
 };
 
-const STATUS_FILTER_OPTIONS = [
-  { value: 'all', label: 'Barchasi' },
-  { value: 'draft', label: 'Qoralama' },
-  { value: 'pending_payment', label: 'To\'lov kutilmoqda' },
-  { value: 'awaiting_partner_payment', label: 'Sug\'urta kompaniyasida to\'lov kutilmoqda' },
-  { value: 'paid', label: 'To\'langan' },
-  { value: 'cancelled', label: 'Bekor qilingan' },
+const STATUS_FILTER_KEYS: { value: StatusFilter; labelKey: TranslationKey }[] = [
+  { value: 'all', labelKey: 'policies.statusAll' },
+  { value: 'draft', labelKey: 'policies.statusDraft' },
+  { value: 'pending_payment', labelKey: 'policies.statusPendingPayment' },
+  { value: 'awaiting_partner_payment', labelKey: 'policies.statusAwaitingPartnerPayment' },
+  { value: 'paid', labelKey: 'policies.statusPaid' },
+  { value: 'cancelled', labelKey: 'policies.statusCancelled' },
 ];
 
 function StatTile({ label, value }: { label: string; value: string }) {
@@ -41,6 +43,7 @@ function StatTile({ label, value }: { label: string; value: string }) {
 }
 
 function PoliciesContent({ user }: { user: User }) {
+  const { t, locale } = useTranslation();
   const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -53,11 +56,12 @@ function PoliciesContent({ user }: { user: User }) {
         const data = await listPolicies();
         setPolicies(data);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Polislar ro\'yxatini olishda xatolik yuz berdi');
+        toast.error(err instanceof Error ? err.message : t('policies.fetchError'));
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id]);
 
   const handleDownload = async (policyId: string, policyNumber: string | null) => {
@@ -72,9 +76,9 @@ function PoliciesContent({ user }: { user: User }) {
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast.success('PDF muvaffaqiyatli yuklab olindi');
+      toast.success(t('policies.pdfDownloadedToast'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'PDF faylni yuklab olishda xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('policies.pdfError'));
     } finally {
       setDownloadingId(null);
     }
@@ -99,15 +103,15 @@ function PoliciesContent({ user }: { user: User }) {
 
   return (
     <>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Mening polislarim</h1>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Barcha OSAGO arizalaringiz va faol polislaringiz</p>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('policies.title')}</h1>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('policies.subtitle')}</p>
 
       <ResumeApplicationBanner />
 
       <div className="mt-6 grid grid-cols-3 gap-4">
-        <StatTile label="Jami polislar" value={String(policies.length)} />
-        <StatTile label="Faol polislar" value={String(activeCount)} />
-        <StatTile label="Umumiy to'lov" value={formatCurrency(totalSpent)} />
+        <StatTile label={t('policies.totalPolicies')} value={String(policies.length)} />
+        <StatTile label={t('policies.activePolicies')} value={String(activeCount)} />
+        <StatTile label={t('policies.totalSpent')} value={formatCurrency(totalSpent, locale)} />
       </div>
 
       {!loading && policies.length > 0 && (
@@ -117,29 +121,29 @@ function PoliciesContent({ user }: { user: User }) {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Polis raqami, model yoki davlat raqami bo'yicha qidirish"
+              placeholder={t('policies.searchPlaceholder')}
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
           <Select
-            options={STATUS_FILTER_OPTIONS}
+            options={STATUS_FILTER_KEYS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           />
         </div>
       )}
 
-      {loading && <p className="mt-8 text-sm text-slate-500">Yuklanmoqda...</p>}
+      {loading && <p className="mt-8 text-sm text-slate-500">{t('common.loading')}</p>}
 
       {!loading && policies.length === 0 && (
         <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-          Hozircha sizda sug&apos;urta polislari yo&apos;q.
+          {t('policies.noPolicies')}
         </div>
       )}
 
       {!loading && policies.length > 0 && filteredPolicies.length === 0 && (
         <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-          Qidiruv bo&apos;yicha polis topilmadi.
+          {t('policies.noSearchResults')}
         </div>
       )}
 
@@ -154,24 +158,24 @@ function PoliciesContent({ user }: { user: User }) {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold text-slate-900 dark:text-slate-100">
-                    {policy.policyNumber ?? 'Polis raqami hali berilmagan'}
+                    {policy.policyNumber ?? t('policies.noPolicyNumber')}
                   </p>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     {policy.vehicle ? `${policy.vehicle.model} · ${policy.vehicle.plateNumber}` : '-'}
                   </p>
                 </div>
                 <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>
-                  {status.label}
+                  {t(status.labelKey)}
                 </span>
               </div>
 
               <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
                 <span>
-                  Narxi: <span className="font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(policy.price)}</span>
+                  {t('policies.priceLabel')} <span className="font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(policy.price, locale)}</span>
                 </span>
                 {policy.validTo && (
                   <span className="text-xs text-slate-500">
-                    {new Date(policy.validFrom!).toLocaleDateString('uz-UZ')} — {new Date(policy.validTo).toLocaleDateString('uz-UZ')}
+                    {formatDate(policy.validFrom!, locale)} — {formatDate(policy.validTo, locale)}
                   </span>
                 )}
               </div>
@@ -183,7 +187,7 @@ function PoliciesContent({ user }: { user: User }) {
                     isLoading={downloadingId === policy.id}
                     onClick={() => handleDownload(policy.id, policy.policyNumber)}
                   >
-                    PDF yuklab olish
+                    {t('policies.downloadPdf')}
                   </Button>
                 </div>
               )}

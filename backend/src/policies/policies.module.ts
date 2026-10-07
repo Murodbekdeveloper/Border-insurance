@@ -5,7 +5,6 @@ import { Driver } from './entities/driver.entity';
 import { PoliciesService } from './policies.service';
 import { PoliciesController } from './policies.controller';
 import { PolicyVerificationController } from './policy-verification.controller';
-import { PricingService } from './pricing/pricing.service';
 import { PdfService } from './pdf/pdf.service';
 import { VehiclesModule } from '../vehicles/vehicles.module';
 import { UsersModule } from '../users/users.module';
@@ -25,13 +24,12 @@ import { InsurancePartnerModule } from '../insurance-partner/insurance-partner.m
   ],
   providers: [
     PoliciesService,
-    PricingService,
     PdfService,
     RenewalRemindersCron,
     PartnerPolicySyncCron,
     StaleDraftCleanupCron,
   ],
   controllers: [PoliciesController, PolicyVerificationController],
-  exports: [PoliciesService, PricingService],
+  exports: [PoliciesService],
 })
 export class PoliciesModule {}

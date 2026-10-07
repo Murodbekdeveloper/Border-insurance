@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CAR_BRANDS, CAR_MODELS_BY_BRAND, guessBrand } from '@/lib/carModels';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Combobox } from '@/components/ui/Combobox';
 
 interface BrandModelFieldsProps {
@@ -25,7 +26,23 @@ function splitInitialValue(value: string): { brand: string; model: string } {
 // CAR_BRANDS ro'yxatida yo'q qiymat kiritilganda har bosishda qayta aniqlanib, allaqachon
 // kiritilgan model matnini o'chirib yuborar edi.
 export function BrandModelFields({ value, onChange, onBlur, error }: BrandModelFieldsProps) {
+  const { t } = useTranslation();
   const [{ brand, model }, setParts] = useState(() => splitInitialValue(value));
+  // Tracks what this component itself last emitted via onChange, so the
+  // effect below can tell "value changed because we typed" (skip re-split,
+  // the whole reason internal state exists — see the comment above) apart
+  // from "value changed some other way" (e.g. the vehicle-info page's OCR
+  // auto-fill calling setValue('model', ...) directly) — the latter must
+  // resync brand/model, or the combobox keeps showing stale/blank text
+  // while the form's real value has already moved on.
+  const lastEmitted = useRef(value);
+
+  useEffect(() => {
+    if (value !== lastEmitted.current) {
+      lastEmitted.current = value;
+      setParts(splitInitialValue(value));
+    }
+  }, [value]);
 
   const models = useMemo(
     () => (CAR_BRANDS.includes(brand) ? CAR_MODELS_BY_BRAND[brand] ?? [] : []),
@@ -33,23 +50,25 @@ export function BrandModelFields({ value, onChange, onBlur, error }: BrandModelF
   );
 
   const update = (nextBrand: string, nextModel: string) => {
+    const next = [nextBrand, nextModel].filter(Boolean).join(' ');
+    lastEmitted.current = next;
     setParts({ brand: nextBrand, model: nextModel });
-    onChange([nextBrand, nextModel].filter(Boolean).join(' '));
+    onChange(next);
   };
 
   return (
     <>
       <Combobox
-        label="Marka"
-        placeholder="Markani tanlang yoki kiriting"
+        label={t('vehicleInfo.brandLabel')}
+        placeholder={t('vehicleInfo.brandPlaceholder')}
         options={CAR_BRANDS}
         value={brand}
         onChange={(nextBrand) => update(nextBrand, nextBrand === brand ? model : '')}
         onBlur={onBlur}
       />
       <Combobox
-        label="Model"
-        placeholder={brand ? 'Model tanlang yoki kiriting' : 'Avval markani tanlang'}
+        label={t('vehicleInfo.modelLabel')}
+        placeholder={brand ? t('vehicleInfo.modelPlaceholder') : t('vehicleInfo.modelPlaceholderNoBrand')}
         options={models}
         value={model}
         onChange={(nextModel) => update(brand, nextModel)}

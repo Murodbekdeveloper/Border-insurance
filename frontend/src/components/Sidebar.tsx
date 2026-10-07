@@ -8,11 +8,13 @@ import { useAccountsStore } from '@/store/accountsStore';
 import { useApplicationStore } from '@/store/applicationStore';
 import { useAccountSwitch } from '@/hooks/useAccountSwitch';
 import { AccountSwitcherList } from '@/components/AccountSwitcherList';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import type { TranslationKey } from '@/lib/i18n/useTranslation';
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { href: string; labelKey: TranslationKey; icon: React.ReactNode }[] = [
   {
     href: '/policies',
-    label: 'Mening polislarim',
+    labelKey: 'nav.myPolicies',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -21,7 +23,7 @@ const NAV_ITEMS = [
   },
   {
     href: '/profile',
-    label: 'Profil',
+    labelKey: 'nav.profile',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5">
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
@@ -31,6 +33,7 @@ const NAV_ITEMS = [
 ];
 
 export function Sidebar() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -89,7 +92,7 @@ export function Sidebar() {
           onClick={handleNewApplication}
           className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-orange-500/30 transition-colors hover:bg-orange-600"
         >
-          + Yangi ariza
+          {t('nav.newApplication')}
         </button>
 
         <nav className="mt-8 flex flex-col gap-1">
@@ -104,7 +107,7 @@ export function Sidebar() {
                 }`}
               >
                 {item.icon}
-                {item.label}
+                {t(item.labelKey)}
               </Link>
             );
           })}
@@ -139,7 +142,7 @@ export function Sidebar() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
               </span>
-              Boshqa hisob qo&apos;shish
+              {t('nav.addAnotherAccount')}
             </button>
             <button
               type="button"
@@ -151,7 +154,7 @@ export function Sidebar() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0110.5 3h6a2.25 2.25 0 012.25 2.25v13.5A2.25 2.25 0 0116.5 21h-6a2.25 2.25 0 01-2.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
                 </svg>
               </span>
-              Bu hisobdan chiqish
+              {t('nav.logout')}
             </button>
           </div>
         )}
@@ -168,7 +171,7 @@ export function Sidebar() {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-white">{user.fullName}</p>
               <p className="truncate text-xs text-slate-500">
-                {otherAccountsCount > 0 ? `+${otherAccountsCount} boshqa hisob` : user.email}
+                {otherAccountsCount > 0 ? `+${otherAccountsCount} ${t('nav.otherAccountsSuffix')}` : user.email}
               </p>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${switcherOpen ? 'rotate-180' : ''}`}>

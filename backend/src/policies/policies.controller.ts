@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Post,
   Res,
+  ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -16,6 +17,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { PoliciesService } from './policies.service';
 import { CreatePolicyDto } from './dto/create-policy.dto';
+import { AsiaInsuranceApiError } from '../insurance-partner/asia-insurance-api.error';
 
 @ApiTags('policies')
 @ApiBearerAuth()
@@ -54,7 +56,9 @@ export class PoliciesController {
     @CurrentUser() currentUser: RequestUser,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const price = await this.policiesService.getPrice(id, currentUser.userId);
+    const price = await this.wrap(() =>
+      this.policiesService.getPrice(id, currentUser.userId),
+    );
     return { price };
   }
 
@@ -66,7 +70,9 @@ export class PoliciesController {
     @CurrentUser() currentUser: RequestUser,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.policiesService.submitToPartner(id, currentUser.userId);
+    return this.wrap(() =>
+      this.policiesService.submitToPartner(id, currentUser.userId),
+    );
   }
 
   @Post(':id/confirm')
@@ -95,5 +101,24 @@ export class PoliciesController {
       'Content-Length': buffer.length,
     });
     res.send(buffer);
+  }
+
+  // Mirrors ApexBoxController/InsurancePartnerController's own wrap() —
+  // getPrice/submitToPartner both end up calling whichever partner client
+  // (Asia Insurance or Apex_Box) is relevant for the policy's vehicle, and
+  // either one throws this same AsiaInsuranceApiError(0, ...) when its
+  // credentials aren't configured. Without this, that surfaced as a raw,
+  // unhandled 500 instead of a clean, actionable error.
+  private async wrap<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (err) {
+      if (err instanceof AsiaInsuranceApiError && err.httpStatus === 0) {
+        throw new ServiceUnavailableException(
+          "Sug'urta kompaniyasi bilan integratsiya hali sozlanmagan",
+        );
+      }
+      throw err;
+    }
   }
 }

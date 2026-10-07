@@ -1,10 +1,12 @@
 import {
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Inject,
   Injectable,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Between, DataSource, MoreThanOrEqual, Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
@@ -34,9 +36,25 @@ export class PaymentsService {
     private readonly paymentGateway: PaymentGateway,
     private readonly cardsService: CardsService,
     private readonly policiesService: PoliciesService,
+    private readonly configService: ConfigService,
   ) {}
 
   async pay(userId: string, dto: CreatePaymentDto): Promise<Payment> {
+    // This charges a saved card directly and marks the policy PAID without
+    // ever involving the real OSAGO issuer (Asia Insurance/Apex_Box) — real
+    // purchases go through PoliciesService.submitToPartner() instead (see
+    // its own comment). Neither the web nor mobile client calls this
+    // endpoint anymore; refuse it in production so it can't be used to
+    // mint a policy that looks issued but was never actually written by an
+    // insurer. Left enabled outside production since it's still the only
+    // full purchase-to-PDF path the e2e suite can exercise without live
+    // partner credentials.
+    if (this.configService.get<string>('env') === 'production') {
+      throw new ForbiddenException(
+        "Bu to'lov usuli productionda o'chirilgan — OSAGO polisasi faqat sug'urta kompaniyasi orqali (submit-to-partner) to'lanishi mumkin",
+      );
+    }
+
     const card = await this.cardsService.findById(dto.cardId, userId);
     // Verification only applies to Payme-tokenized cards (paymeToken set);
     // under the mock gateway no card ever has a token, so this must not
