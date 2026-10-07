@@ -71,7 +71,7 @@ function ConfirmationContent() {
         <h2 className="text-2xl font-extrabold tracking-wide text-green-700 dark:text-green-400">{t('confirmation.statusConfirmed')}</h2>
 
         {policy && (
-          <div className="grid w-full grid-cols-2 gap-4 rounded-2xl bg-slate-50 p-6 text-left text-sm dark:bg-slate-800">
+          <div className="grid w-full grid-cols-1 gap-4 rounded-2xl bg-slate-50 p-6 text-left text-sm sm:grid-cols-2 dark:bg-slate-800">
             <div>
               <p className="text-xs uppercase tracking-wide text-slate-400">{t('confirmation.policyNumber')}</p>
               <p className="mt-1 font-semibold text-slate-900 dark:text-slate-100">{policy.policyNumber}</p>

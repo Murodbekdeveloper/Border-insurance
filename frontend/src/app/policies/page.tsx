@@ -126,15 +126,15 @@ function PoliciesContent({ user }: { user: User }) {
 
       <ResumeApplicationBanner />
 
-      <div className="mt-6 grid grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile label={t('policies.totalPolicies')} value={String(policies.length)} />
         <StatTile label={t('policies.activePolicies')} value={String(activeCount)} />
         <StatTile label={t('policies.totalSpent')} value={formatCurrency(totalSpent, locale)} />
       </div>
 
       {!loading && policies.length > 0 && (
-        <div className="mt-8 grid grid-cols-3 gap-4">
-          <div className="col-span-2">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="sm:col-span-2">
             <input
               type="text"
               value={query}
@@ -165,7 +165,7 @@ function PoliciesContent({ user }: { user: User }) {
         </div>
       )}
 
-      <div className="mt-8 grid grid-cols-2 gap-5">
+      <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
         {filteredPolicies.map((policy) => {
           const status = STATUS_LABELS[policy.status];
           const resumable = RESUMABLE_STATUSES.includes(policy.status);

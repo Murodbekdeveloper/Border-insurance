@@ -191,7 +191,7 @@ function DriverRestrictionContent() {
           <div className="flex flex-col gap-5">
             {errors.drivers?.message && <p className="text-sm text-red-600">{errors.drivers.message}</p>}
             {fields.map((field, index) => (
-              <div key={field.id} className="rounded-2xl border border-slate-200 p-6 dark:border-slate-800">
+              <div key={field.id} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:p-6">
                 <div className="mb-4 flex items-center justify-between">
                   <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-700 dark:bg-orange-950/40 dark:text-orange-400">
@@ -223,7 +223,7 @@ function DriverRestrictionContent() {
                   />
                 </div>
 
-                <div className="mt-5 grid grid-cols-2 gap-5">
+                <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
                   <Input
                     label={t('driverRestriction.fullName')}
                     placeholder={t('driverRestriction.fullNamePlaceholder')}
@@ -301,11 +301,11 @@ function DriverRestrictionContent() {
           </div>
         )}
 
-        <div className="flex justify-between">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
           <Button type="button" variant="outline" onClick={() => router.push('/vehicle-info')}>
             {t('common.back')}
           </Button>
-          <Button type="submit" variant="primary" isLoading={isSubmitting} className="px-10">
+          <Button type="submit" variant="primary" isLoading={isSubmitting} className="sm:px-10">
             {t('driverRestriction.next')}
           </Button>
         </div>

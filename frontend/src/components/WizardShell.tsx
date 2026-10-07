@@ -85,7 +85,7 @@ export function WizardShell({ currentStep, title, subtitle, children, wide }: Wi
         <p className="text-xs text-slate-500">{t('common.copyright', { year: new Date().getFullYear() })}</p>
       </aside>
 
-      <main className="flex-1 px-6 py-10 lg:px-16 lg:py-14">
+      <main className="flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-16 lg:py-14">
         <div className={wide ? 'mx-auto max-w-4xl' : 'mx-auto max-w-2xl'}>
           <div className="mb-4 flex items-center justify-between">
             <ExitToMenuButton />
@@ -109,7 +109,7 @@ export function WizardShell({ currentStep, title, subtitle, children, wide }: Wi
             />
           </div>
 
-          <div className="mt-8 rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 lg:p-10">
+          <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 sm:p-8 dark:bg-slate-900 dark:ring-slate-800 lg:p-10">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{title}</h1>
             {subtitle && <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
             <div className="mt-8">{children}</div>

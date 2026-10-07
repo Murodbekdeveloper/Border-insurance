@@ -219,7 +219,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <Sidebar />
       <div className="flex-1">
         <MobileTopBar />
-        <main className="px-6 py-10 lg:px-14 lg:py-12">
+        <main className="px-4 py-8 sm:px-6 sm:py-10 lg:px-14 lg:py-12">
           <div className="mx-auto max-w-6xl">
             <div className="mb-4 hidden items-center justify-end gap-1 lg:flex">
               <LanguageSwitcher />

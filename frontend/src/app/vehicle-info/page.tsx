@@ -324,7 +324,7 @@ function VehicleInfoContent() {
           onExtract={handleExtractDocument}
         />
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Controller
             control={control}
             name="weightCategory"
@@ -368,7 +368,7 @@ function VehicleInfoContent() {
           onChange={(e) => setValue('plateNumber', maskPlateNumber(e.target.value), { shouldValidate: true, shouldDirty: true })}
         />
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Input
             label={t('vehicleInfo.techPassportSeries')}
             placeholder="AAB"
@@ -391,7 +391,7 @@ function VehicleInfoContent() {
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Controller
             control={control}
             name="model"
@@ -414,7 +414,7 @@ function VehicleInfoContent() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Select
             label={t('vehicleInfo.vehicleTypeLabel')}
             options={VEHICLE_TYPES.map((v) => ({ value: v.value, label: t(v.labelKey) }))}
@@ -439,7 +439,7 @@ function VehicleInfoContent() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Input
             label={t('vehicleInfo.manufactureYear')}
             inputMode="numeric"
@@ -457,7 +457,7 @@ function VehicleInfoContent() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Input
             label={t('vehicleInfo.engineNumber')}
             placeholder={t('vehicleInfo.engineNumber')}
@@ -562,7 +562,7 @@ function VehicleInfoContent() {
           onChange={(e) => setValue('phone', maskPhoneUZ(e.target.value), { shouldValidate: true, shouldDirty: true })}
         />
 
-        <div className="rounded-2xl border border-slate-200 p-6 dark:border-slate-800">
+        <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:p-6">
           <Controller
             control={control}
             name="ownerIsApplicant"
@@ -584,7 +584,7 @@ function VehicleInfoContent() {
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('vehicleInfo.ownerDataNote')}
               </p>
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <Input
                   label={t('vehicleInfo.ownerPassportSeries')}
                   placeholder="AB"
@@ -609,7 +609,7 @@ function VehicleInfoContent() {
           )}
         </div>
 
-        <div className="flex justify-between">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
           <Button type="button" variant="outline" onClick={() => router.push('/resident-type')}>
             {t('common.back')}
           </Button>
@@ -618,7 +618,7 @@ function VehicleInfoContent() {
             variant="primary"
             isLoading={isSubmitting}
             disabled={isSubmitting}
-            className="px-10"
+            className="sm:px-10"
           >
             {t('vehicleInfo.next')}
           </Button>

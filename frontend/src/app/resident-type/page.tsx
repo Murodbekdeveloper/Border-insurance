@@ -140,14 +140,14 @@ function ResidentTypeContent() {
 
   return (
     <AuthShell title={t('residentType.title')} subtitle={t('residentType.subtitle')} wide showExitToMenu>
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {OPTIONS.map((option) => (
           <button
             key={option.type}
             type="button"
             disabled={busy}
             onClick={() => handleSelect(option.type)}
-            className={`group relative flex flex-col items-start gap-4 rounded-2xl border bg-white p-6 text-left transition-all hover:-translate-y-0.5 hover:border-green-500 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-900 ${
+            className={`group relative flex flex-col items-start gap-4 rounded-2xl border bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-green-500 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-900 sm:p-6 ${
               selectedType === option.type ? 'border-green-500' : 'border-slate-200 dark:border-slate-800'
             }`}
           >

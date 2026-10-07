@@ -68,7 +68,7 @@ export function AuthShell({ title, subtitle, children, wide, showExitToMenu }: A
         <p className="relative z-10 text-xs text-slate-500">© {new Date().getFullYear()} OSAGO Online. Barcha huquqlar himoyalangan.</p>
       </div>
 
-      <div className="relative flex flex-1 items-center justify-center bg-slate-50 px-6 py-16 dark:bg-slate-950 lg:bg-white lg:dark:bg-slate-950">
+      <div className="relative flex flex-1 items-center justify-center bg-slate-50 px-4 py-14 sm:px-6 sm:py-16 dark:bg-slate-950 lg:bg-white lg:dark:bg-slate-950">
         <div className="absolute left-6 right-6 top-6 flex items-center justify-between">
           {showExitToMenu ? <ExitToMenuButton /> : <span />}
           <div className="flex items-center gap-1">

@@ -45,12 +45,12 @@ export function ResumeApplicationBanner() {
   if (!resumePath) return null;
 
   return (
-    <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4 dark:border-orange-900/50 dark:bg-orange-950/20">
+    <div className="mb-6 flex flex-col items-start gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 dark:border-orange-900/50 dark:bg-orange-950/20">
       <div>
         <p className="text-sm font-semibold text-orange-900 dark:text-orange-300">{t('nav.resumeTitle')}</p>
         <p className="text-xs text-orange-700 dark:text-orange-400">{t('nav.resumeNote')}</p>
       </div>
-      <Button variant="primary" onClick={() => router.push(resumePath)} className="shrink-0">
+      <Button variant="primary" onClick={() => router.push(resumePath)} className="w-full shrink-0 sm:w-auto">
         {t('nav.resumeButton')}
       </Button>
     </div>

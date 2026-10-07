@@ -90,7 +90,7 @@ export default function RegisterPage() {
           {...registerField('fullName')}
           onChange={(e) => setValue('fullName', maskLetters(e.target.value, 60), { shouldValidate: true, shouldDirty: true })}
         />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input
             label={t('register.email')}
             type="email"
@@ -107,7 +107,7 @@ export default function RegisterPage() {
             onChange={(e) => setValue('phone', maskPhoneUZ(e.target.value), { shouldValidate: true, shouldDirty: true })}
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <PasswordInput
             label={t('register.password')}
             placeholder={t('register.passwordPlaceholder')}

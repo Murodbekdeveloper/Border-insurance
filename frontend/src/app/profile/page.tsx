@@ -41,7 +41,7 @@ function ExpiryBanner({ policies }: { policies: InsurancePolicy[] }) {
 
   return (
     <div
-      className={`mb-6 flex items-center gap-4 rounded-2xl border px-5 py-4 ${
+      className={`mb-6 flex flex-col items-start gap-3 rounded-2xl border px-5 py-4 sm:flex-row sm:items-center sm:gap-4 ${
         expired
           ? 'border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/30'
           : 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/30'
@@ -171,7 +171,7 @@ function PersonalInfoCard({ user }: { user: User }) {
             <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
               {t('profile.passportSectionNote')}
             </p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input label={t('profile.passportSeries')} placeholder="AB" error={errors.passportSeries?.message} {...register('passportSeries')} />
               <Input label={t('profile.passportNumber')} placeholder="1234567" error={errors.passportNumber?.message} {...register('passportNumber')} />
             </div>
@@ -196,7 +196,7 @@ function PersonalInfoCard({ user }: { user: User }) {
           </div>
         </form>
       ) : (
-        <dl className="mt-6 grid grid-cols-2 gap-5 border-t border-slate-100 pt-5 text-sm dark:border-slate-800">
+        <dl className="mt-6 grid grid-cols-1 gap-5 border-t border-slate-100 pt-5 text-sm sm:grid-cols-2 dark:border-slate-800">
           <div>
             <dt className="text-slate-400">{t('profile.phone')}</dt>
             <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{user.phone ?? '-'}</dd>
@@ -275,7 +275,7 @@ function EmailVerificationCard({ user }: { user: User }) {
   };
 
   return (
-    <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 lg:col-span-2 dark:border-slate-800 dark:bg-slate-900">
       <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('profile.addEmailTitle')}</h2>
       <p className="mt-1 text-xs text-slate-400">
         {t('profile.addEmailNote')}
@@ -423,7 +423,7 @@ function ConnectedAccountsCard({ currentUserId }: { currentUserId: string }) {
   const { select, switchingUserId } = useAccountSwitch('/policies');
 
   return (
-    <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 lg:col-span-2 dark:border-slate-800 dark:bg-slate-900">
       <h2 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('profile.connectedAccounts')}</h2>
       <AccountSwitcherList
         accounts={accounts}
@@ -470,7 +470,7 @@ function ProfileContent({ user }: { user: User }) {
         <ExpiryBanner policies={policies} />
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <EmailVerificationCard user={user} />
         <PersonalInfoCard user={user} />
         <PasswordCard user={user} />
