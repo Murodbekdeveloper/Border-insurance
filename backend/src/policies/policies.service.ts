@@ -60,33 +60,6 @@ export class PoliciesService {
       throw new ForbiddenException('Bu transport vositasi sizga tegishli emas');
     }
 
-    // Exactly one policy should ever be "in flight" or active for a given
-    // physical vehicle — otherwise the same car could end up with several
-    // simultaneously valid OSAGO policies.
-    const conflicting = await this.policiesRepository.findOne({
-      where: [
-        { vehicleId: vehicle.id, status: PolicyStatus.PENDING_PAYMENT },
-        {
-          vehicleId: vehicle.id,
-          status: PolicyStatus.AWAITING_PARTNER_PAYMENT,
-        },
-        { vehicleId: vehicle.id, status: PolicyStatus.PAID },
-      ],
-    });
-    if (conflicting) {
-      const isExpired =
-        conflicting.status === PolicyStatus.PAID &&
-        conflicting.validTo !== null &&
-        conflicting.validTo < new Date();
-      if (!isExpired) {
-        throw new ConflictException(
-          conflicting.status === PolicyStatus.PAID
-            ? 'Bu transport vositasi uchun faol OSAGO polisi allaqachon mavjud'
-            : "Bu transport vositasi uchun to'lov kutilayotgan ariza allaqachon mavjud",
-        );
-      }
-    }
-
     if (
       vehicle.registrationCountry === RegistrationCountry.FOREIGN &&
       !dto.foreignPolicyDurationId
