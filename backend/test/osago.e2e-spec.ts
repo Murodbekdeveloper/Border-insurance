@@ -11,6 +11,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { User } from '../src/users/entities/user.entity';
+import { AsiaInsuranceClientService } from '../src/insurance-partner/asia-insurance-client.service';
 
 interface RegisterResponseBody {
   email: string;
@@ -67,9 +68,29 @@ describe('OSAGO API (e2e)', () => {
   let usersRepository: Repository<User>;
 
   beforeAll(async () => {
+    // Pricing now quotes the real Asia Insurance /get-calc-osago endpoint
+    // (see PoliciesService.getPrice) instead of a local formula, and
+    // resolving the default 1-year period reads /get-period — neither
+    // has real credentials or network access in CI, so both are stubbed
+    // here with deterministic responses matching what this suite already
+    // asserts on (price/payment amount of 600_000).
+    const asiaInsuranceClientMock: Partial<AsiaInsuranceClientService> = {
+      calculatePremium: () =>
+        Promise.resolve({
+          result: true,
+          message: 'success',
+          response: { amount_uzs: 600_000 },
+        }),
+      getPeriods: () =>
+        Promise.resolve({ items: [{ period: 1, name: '1 yil' }] }),
+    };
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(AsiaInsuranceClientService)
+      .useValue(asiaInsuranceClientMock)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
@@ -215,6 +236,21 @@ describe('OSAGO API (e2e)', () => {
       const body = res.body as UserResponseBody;
 
       expect(body.residentType).toBe('resident');
+    });
+
+    // Required by PoliciesService.getPrice()/submitToPartner() — Asia
+    // Insurance's applicant fields come from the user's own profile, not
+    // the policy, so pricing a policy 400s without these set first.
+    it('sets passport details needed for pricing', async () => {
+      await request(server)
+        .patch('/users/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          passportSeries: 'AB',
+          passportNumber: '1234567',
+          birthDate: '1990-01-01',
+        })
+        .expect(200);
     });
 
     it('issues a new access token via refresh', async () => {
