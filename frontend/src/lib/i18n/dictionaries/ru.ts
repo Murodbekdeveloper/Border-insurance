@@ -308,6 +308,7 @@ export const ru: Dictionary = {
     fetchError: 'Ошибка при получении списка полисов',
     pdfDownloadedToast: 'PDF успешно скачан',
     pdfError: 'Ошибка при скачивании PDF-файла',
+    resumeHint: 'Нажмите, чтобы продолжить',
   },
   nav: {
     myPolicies: 'Мои полисы',

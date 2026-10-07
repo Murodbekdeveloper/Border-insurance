@@ -308,6 +308,7 @@ export const ky: Dictionary = {
     fetchError: 'Полистердин тизмесин алууда ката кетти',
     pdfDownloadedToast: 'PDF ийгиликтүү жүктөлдү',
     pdfError: 'PDF файлды жүктөп алууда ката кетти',
+    resumeHint: 'Улантуу үчүн басыңыз',
   },
   nav: {
     myPolicies: 'Менин полистерим',

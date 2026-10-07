@@ -311,6 +311,7 @@ export const uz = {
     fetchError: "Polislar ro'yxatini olishda xatolik yuz berdi",
     pdfDownloadedToast: 'PDF muvaffaqiyatli yuklab olindi',
     pdfError: 'PDF faylni yuklab olishda xatolik yuz berdi',
+    resumeHint: 'Davom ettirish uchun bosing',
   },
   nav: {
     myPolicies: 'Mening polislarim',

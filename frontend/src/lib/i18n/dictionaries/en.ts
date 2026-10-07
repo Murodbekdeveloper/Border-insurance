@@ -308,6 +308,7 @@ export const en: Dictionary = {
     fetchError: 'Error fetching the list of policies',
     pdfDownloadedToast: 'PDF downloaded successfully',
     pdfError: 'Error downloading the PDF file',
+    resumeHint: 'Click to continue',
   },
   nav: {
     myPolicies: 'My policies',

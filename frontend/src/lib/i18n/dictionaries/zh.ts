@@ -308,6 +308,7 @@ export const zh: Dictionary = {
     fetchError: '获取保单列表时出错',
     pdfDownloadedToast: 'PDF 下载成功',
     pdfError: '下载 PDF 文件时出错',
+    resumeHint: '点击继续',
   },
   nav: {
     myPolicies: '我的保单',

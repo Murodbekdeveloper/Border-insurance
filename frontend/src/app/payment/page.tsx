@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getPrice, submitToPartner } from '@/lib/api/policies';
+import { getPolicy, getPrice, submitToPartner } from '@/lib/api/policies';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuthStore } from '@/store/authStore';
@@ -43,13 +43,26 @@ function PaymentContent() {
       loadingPriceRef.current = id;
       setLoadingPrice(true);
       setPriceError(null);
-      // Real-time quote from the insurer (Asia Insurance/Apex_Box), not a
-      // local estimate — the amount shown here is exactly what the customer
-      // will be charged.
-      getPrice(id)
-        .then((result) => {
+      // A policy already submitted to the partner (e.g. resumed from the
+      // policies list after leaving before paying) has a locked-in,
+      // authoritative price — PoliciesService.getPrice() itself refuses to
+      // re-quote it (that would silently revert its status), so skip
+      // straight to using the stored price instead of treating that refusal
+      // as an error.
+      getPolicy(id)
+        .then((policy) => {
           if (loadingPriceRef.current !== id) return;
-          setPrice(result);
+          if (policy.status === 'awaiting_partner_payment') {
+            setPrice(policy.price);
+            return;
+          }
+          // Real-time quote from the insurer (Asia Insurance/Apex_Box), not
+          // a local estimate — the amount shown here is exactly what the
+          // customer will be charged.
+          return getPrice(id).then((result) => {
+            if (loadingPriceRef.current !== id) return;
+            setPrice(result);
+          });
         })
         .catch((err: unknown) => {
           if (loadingPriceRef.current !== id) return;

@@ -1,18 +1,28 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { InsurancePolicy, User } from '@/types';
 import { getPolicyPdfBlob, listPolicies } from '@/lib/api/policies';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { TranslationKey } from '@/lib/i18n/useTranslation';
 import { useAuthStore } from '@/store/authStore';
+import { useApplicationStore } from '@/store/applicationStore';
 import { toast } from '@/store/toastStore';
 import { AuthGuard } from '@/components/AuthGuard';
 import { DashboardShell } from '@/components/DashboardShell';
 import { ResumeApplicationBanner } from '@/components/ResumeApplicationBanner';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
+
+// Statuses where the application isn't finished yet — the customer can
+// still pick it back up and pay. "paid"/"cancelled" are end states.
+const RESUMABLE_STATUSES: InsurancePolicy['status'][] = [
+  'draft',
+  'pending_payment',
+  'awaiting_partner_payment',
+];
 
 type StatusFilter = InsurancePolicy['status'] | 'all';
 
@@ -43,7 +53,9 @@ function StatTile({ label, value }: { label: string; value: string }) {
 }
 
 function PoliciesContent({ user }: { user: User }) {
+  const router = useRouter();
   const { t, locale } = useTranslation();
+  const { setPolicy, setPrice } = useApplicationStore();
   const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -82,6 +94,12 @@ function PoliciesContent({ user }: { user: User }) {
     } finally {
       setDownloadingId(null);
     }
+  };
+
+  const handleResume = (policy: InsurancePolicy) => {
+    setPolicy(policy.id);
+    setPrice(policy.price);
+    router.push('/payment');
   };
 
   const activeCount = policies.filter((p) => p.status === 'paid').length;
@@ -150,10 +168,21 @@ function PoliciesContent({ user }: { user: User }) {
       <div className="mt-8 grid grid-cols-2 gap-5">
         {filteredPolicies.map((policy) => {
           const status = STATUS_LABELS[policy.status];
+          const resumable = RESUMABLE_STATUSES.includes(policy.status);
           return (
             <div
               key={policy.id}
-              className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+              role={resumable ? 'button' : undefined}
+              tabIndex={resumable ? 0 : undefined}
+              onClick={resumable ? () => handleResume(policy) : undefined}
+              onKeyDown={
+                resumable
+                  ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') handleResume(policy);
+                    }
+                  : undefined
+              }
+              className={`flex flex-col rounded-2xl border border-slate-200 bg-white p-6 transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900 ${resumable ? 'cursor-pointer' : ''}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -179,6 +208,12 @@ function PoliciesContent({ user }: { user: User }) {
                   </span>
                 )}
               </div>
+
+              {resumable && (
+                <p className="mt-4 text-xs font-medium text-orange-600 dark:text-orange-400">
+                  {t('policies.resumeHint')} →
+                </p>
+              )}
 
               {policy.status === 'paid' && (
                 <div className="mt-4">
