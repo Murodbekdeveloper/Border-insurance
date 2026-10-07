@@ -154,7 +154,7 @@ export class AsiaInsuranceClientService {
     { sandboxPrefixed }: { sandboxPrefixed: boolean },
   ): Promise<TResponse> {
     const url = `${this.baseUrl()}${this.buildPath(path, sandboxPrefixed)}`;
-    const res = await fetch(url, {
+    const res = await this.doFetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -170,10 +170,31 @@ export class AsiaInsuranceClientService {
     { sandboxPrefixed }: { sandboxPrefixed: boolean },
   ): Promise<TResponse> {
     const url = `${this.baseUrl()}${this.buildPath(path, sandboxPrefixed)}`;
-    const res = await fetch(url, {
-      headers: this.authHeader(),
-    });
+    const res = await this.doFetch(url, { headers: this.authHeader() });
     return this.parse<TResponse>(res, url);
+  }
+
+  // fetch() itself can reject — DNS failure, connection refused, TLS
+  // error, timeout — before any HTTP response exists at all, which
+  // parse()'s res.ok check never sees. Unlike a non-2xx response (a real,
+  // logged AsiaInsuranceApiError), this used to propagate as a bare
+  // TypeError: neither caught by wrap()'s instanceof check nor logged
+  // anywhere, surfacing to the customer as Nest's generic, undiagnosable
+  // "Internal server error" with zero trace of what actually failed.
+  private async doFetch(url: string, init: RequestInit): Promise<Response> {
+    try {
+      return await fetch(url, init);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      this.logger.error(`${url} -> network error: ${detail}`);
+      // -1 (distinct from authHeader()/baseUrl()'s 0 for "not configured
+      // at all") — the request was attempted but the connection itself
+      // failed, which PoliciesController.wrap() reports differently.
+      throw new AsiaInsuranceApiError(
+        -1,
+        `Asia Insurance bilan tarmoq ulanishida xatolik: ${detail}`,
+      );
+    }
   }
 
   private async parse<TResponse>(

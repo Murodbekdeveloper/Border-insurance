@@ -169,6 +169,21 @@ describe('AsiaInsuranceClientService', () => {
     errorSpy.mockRestore();
   });
 
+  it('wraps a fetch()-level failure (DNS/timeout/connection) as httpStatus -1 and logs it', async () => {
+    const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    fetchMock.mockRejectedValue(new TypeError('fetch failed'));
+
+    await expect(service.getRelatives()).rejects.toMatchObject({
+      httpStatus: -1,
+      message: expect.stringContaining('fetch failed') as string,
+    });
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('fetch failed'),
+    );
+
+    errorSpy.mockRestore();
+  });
+
   it('throws before ever calling fetch when the login/password are not configured', async () => {
     const configService = {
       get: (key: string) =>

@@ -88,6 +88,11 @@ export class ApexBoxController {
           message: 'Apex_Box API hali ulanmagan',
         });
       }
+      if (err instanceof AsiaInsuranceApiError && err.httpStatus === -1) {
+        throw new ServiceUnavailableException(
+          "Apex_Box bilan ulanishda xatolik yuz berdi. Birozdan so'ng qayta urinib ko'ring.",
+        );
+      }
       throw err;
     }
   }

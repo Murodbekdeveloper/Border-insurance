@@ -49,6 +49,11 @@ export class InsurancePartnerController {
           message: 'Asia Insurance API hali ulanmagan',
         });
       }
+      if (err instanceof AsiaInsuranceApiError && err.httpStatus === -1) {
+        throw new ServiceUnavailableException(
+          "Asia Insurance bilan ulanishda xatolik yuz berdi. Birozdan so'ng qayta urinib ko'ring.",
+        );
+      }
       throw err;
     }
   }
@@ -70,6 +75,11 @@ export class InsurancePartnerController {
           code: INSURANCE_PARTNER_NOT_CONFIGURED_CODE,
           message: 'Asia Insurance API hali ulanmagan',
         });
+      }
+      if (err instanceof AsiaInsuranceApiError && err.httpStatus === -1) {
+        throw new ServiceUnavailableException(
+          "Asia Insurance bilan ulanishda xatolik yuz berdi. Birozdan so'ng qayta urinib ko'ring.",
+        );
       }
       throw err;
     }

@@ -119,6 +119,15 @@ export class PoliciesController {
           "Sug'urta kompaniyasi bilan integratsiya hali sozlanmagan",
         );
       }
+      // -1: the connection to Asia Insurance itself failed (DNS, timeout,
+      // refused, TLS — see AsiaInsuranceClientService.doFetch), as opposed
+      // to a real HTTP rejection below. Distinct message since this is an
+      // infra/network issue, not something fixable by resubmitting.
+      if (err instanceof AsiaInsuranceApiError && err.httpStatus === -1) {
+        throw new ServiceUnavailableException(
+          "Sug'urta kompaniyasi (Asia Insurance) bilan ulanishda xatolik yuz berdi. Birozdan so'ng qayta urinib ko'ring.",
+        );
+      }
       // Any other AsiaInsuranceApiError means the partner's HTTP response
       // itself wasn't ok (a real status + response body, already logged by
       // AsiaInsuranceClientService.parse()). Surfaced as a clean 502 instead

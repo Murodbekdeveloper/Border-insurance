@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AsiaInsuranceApiError } from './asia-insurance-api.error';
 import {
@@ -36,6 +36,8 @@ import {
  */
 @Injectable()
 export class ApexBoxClientService {
+  private readonly logger = new Logger(ApexBoxClientService.name);
+
   constructor(private readonly configService: ConfigService) {}
 
   createPolicy(request: CreatePolicyRequest): Promise<CreatePolicyResponse> {
@@ -153,7 +155,8 @@ export class ApexBoxClientService {
     const query = withUserId
       ? `?user_id=${encodeURIComponent(this.userId())}`
       : '';
-    const res = await fetch(`${this.baseUrl()}${path}${query}`, {
+    const url = `${this.baseUrl()}${path}${query}`;
+    const res = await this.doFetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -161,21 +164,43 @@ export class ApexBoxClientService {
       },
       body: JSON.stringify(body),
     });
-    return this.parse<TResponse>(res);
+    return this.parse<TResponse>(res, url);
   }
 
   private async get<TResponse>(path: string): Promise<TResponse> {
-    const res = await fetch(`${this.baseUrl()}${path}`, {
-      headers: this.authHeader(),
-    });
-    return this.parse<TResponse>(res);
+    const url = `${this.baseUrl()}${path}`;
+    const res = await this.doFetch(url, { headers: this.authHeader() });
+    return this.parse<TResponse>(res, url);
   }
 
-  private async parse<TResponse>(res: Response): Promise<TResponse> {
+  // See AsiaInsuranceClientService.doFetch — fetch() itself can reject
+  // (DNS, timeout, refused, TLS) before any HTTP response exists, which
+  // parse()'s res.ok check never sees.
+  private async doFetch(url: string, init: RequestInit): Promise<Response> {
+    try {
+      return await fetch(url, init);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      this.logger.error(`${url} -> network error: ${detail}`);
+      throw new AsiaInsuranceApiError(
+        -1,
+        `Apex_Box bilan tarmoq ulanishida xatolik: ${detail}`,
+      );
+    }
+  }
+
+  private async parse<TResponse>(
+    res: Response,
+    url: string,
+  ): Promise<TResponse> {
     if (!res.ok) {
+      const bodyText = await res.text().catch(() => '');
+      this.logger.error(
+        `${url} -> ${res.status}: ${bodyText.slice(0, 2000) || '(empty body)'}`,
+      );
       throw new AsiaInsuranceApiError(
         res.status,
-        `Apex_Box API xatosi: ${res.status}`,
+        `Apex_Box API xatosi: ${res.status}${bodyText ? ` — ${bodyText.slice(0, 500)}` : ''}`,
       );
     }
     return (await res.json()) as TResponse;
