@@ -82,6 +82,7 @@ export const en: Dictionary = {
     ocrSuccess: 'Data was detected and filled into the matching fields. Please review it.',
     ocrNotConfigured: 'Automatic document scanning is not connected yet. Please fill in the fields below manually.',
     ocrError: 'Error analyzing the image',
+    formErrorsTitle: 'Fix the following fields to continue:',
   },
   driverRestriction: {
     title: 'Driver restriction',

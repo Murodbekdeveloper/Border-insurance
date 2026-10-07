@@ -82,6 +82,7 @@ export const zh: Dictionary = {
     ocrSuccess: '已识别信息并填入相应字段，请核对。',
     ocrNotConfigured: '自动识别证件服务尚未开通，请在下方手动填写信息。',
     ocrError: '分析图片时出错',
+    formErrorsTitle: '请修正以下字段后继续：',
   },
   driverRestriction: {
     title: '驾驶员限制',

@@ -44,13 +44,15 @@ function VehicleInfoContent() {
     }
   }, [residentType, router]);
 
+  const [showValidationSummary, setShowValidationSummary] = useState(false);
+
   const {
     register,
     control,
     handleSubmit,
     setValue,
     watch,
-    formState: { errors, isSubmitting, isValid },
+    formState: { errors, isSubmitting },
   } = useForm<VehicleFormData>({
     resolver: zodResolver(getVehicleSchema(t)),
     mode: 'onChange',
@@ -241,6 +243,7 @@ function VehicleInfoContent() {
   const onSubmit = async (data: VehicleFormData) => {
     if (!user) return;
     if (needsCitizenship && !citizenshipId) {
+      setShowValidationSummary(true);
       toast.error(t('vehicleInfo.citizenshipRequired'));
       return;
     }
@@ -256,6 +259,16 @@ function VehicleInfoContent() {
       toast.error(err instanceof Error ? err.message : t('vehicleInfo.saveError'));
     }
   };
+
+  const onInvalid = () => {
+    setShowValidationSummary(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const validationMessages = [
+    ...Object.values(errors).map((e) => e?.message).filter((m): m is string => Boolean(m)),
+    ...(needsCitizenship && !citizenshipId ? [t('vehicleInfo.citizenshipRequired')] : []),
+  ];
 
   const handleExtractDocument = async (files: File[]) => {
     try {
@@ -291,7 +304,20 @@ function VehicleInfoContent() {
 
   return (
     <WizardShell currentStep={1} title={t('vehicleInfo.title')} subtitle={t('vehicleInfo.subtitle')} wide>
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-5">
+        {showValidationSummary && validationMessages.length > 0 && (
+          <div className="rounded-xl border border-red-300 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/30">
+            <p className="text-sm font-medium text-red-700 dark:text-red-400">
+              {t('vehicleInfo.formErrorsTitle')}
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-red-600 dark:text-red-400">
+              {validationMessages.map((message, i) => (
+                <li key={i}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <ImageUploadCard
           label={t('vehicleInfo.ocrLabel')}
           description={t('vehicleInfo.ocrDescription')}
@@ -591,7 +617,7 @@ function VehicleInfoContent() {
             type="submit"
             variant="primary"
             isLoading={isSubmitting}
-            disabled={!isValid || (needsCitizenship && !citizenshipId)}
+            disabled={isSubmitting}
             className="px-10"
           >
             {t('vehicleInfo.next')}

@@ -85,6 +85,7 @@ export const uz = {
     ocrSuccess: "Ma'lumotlar aniqlandi va tegishli maydonlarga to'ldirildi. Iltimos, tekshirib chiqing.",
     ocrNotConfigured: "Hujjatni avtomatik o'qish xizmati hali ulanmagan. Hozircha ma'lumotlarni pastdagi maydonlarga qo'lda kiriting.",
     ocrError: 'Rasmni tahlil qilishda xatolik yuz berdi',
+    formErrorsTitle: "Davom etish uchun quyidagi maydonlarni to'g'rilang:",
   },
   driverRestriction: {
     title: 'Haydovchilar cheklovi',
