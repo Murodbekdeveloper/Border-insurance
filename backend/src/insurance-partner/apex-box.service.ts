@@ -16,6 +16,10 @@ import {
 } from '../policies/entities/insurance-policy.entity';
 import { Driver } from '../policies/entities/driver.entity';
 import { User } from '../users/entities/user.entity';
+import {
+  tashkentTodayIsoDate,
+  tashkentTomorrowIsoDate,
+} from '../common/tashkent-date';
 
 // Uzbek-only Vehicle.vehicleType string ids (frontend's VEHICLE_TYPES,
 // src/lib/constants.ts) -> Apex_Box's typeId (GET
@@ -149,14 +153,14 @@ export class ApexBoxService {
       foreignPolicyDurationId,
     );
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = tashkentTodayIsoDate();
     // A same-day probe (startDate === endDate) hits a *different*, harder
     // validation error ("endDate must be greater than startDate", no valid
     // range stated) instead of the informative one this probe relies on —
     // one day out is enough to dodge that while still being wrong for any
     // real duration, so it reliably reaches the useful rejection.
     let startDate = today;
-    let endDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    let endDate = tashkentTomorrowIsoDate();
     let result = await this.apexBoxClient.createPolicy(
       this.buildCreatePolicyRequest(
         policy,
@@ -399,7 +403,7 @@ export class ApexBoxService {
     user: User,
     foreignPolicyDurationId: string,
   ): CalculatePremiumRequest {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = tashkentTodayIsoDate();
     // CONFIRMED 2026-09-15: unlike /osago (create), which wants an EMPTY
     // pinfl for a foreign citizen, /osago_calculation rejects that with
     // "Не указан ПИНФЛ владельца ТС" and instead wants this literal
@@ -460,7 +464,7 @@ export class ApexBoxService {
     endDate: string,
   ): CreatePolicyRequest {
     const name = splitFullName(user.fullName);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = tashkentTodayIsoDate();
     const passportData = {
       // Confirmed by Asia Insurance: PINFL must be an empty string for a
       // foreign citizen (residentOfUzb = FOREIGNER) — never a placeholder

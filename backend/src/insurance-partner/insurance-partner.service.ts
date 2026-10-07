@@ -19,6 +19,7 @@ import {
 } from '../policies/entities/insurance-policy.entity';
 import { User } from '../users/entities/user.entity';
 import { RegistrationCountry } from '../vehicles/entities/vehicle.entity';
+import { tashkentTodayIsoDate } from '../common/tashkent-date';
 
 export interface PartnerSaveResult {
   transactionUuid: string;
@@ -32,10 +33,6 @@ export interface PartnerSaveResult {
 export interface PartnerSubmitResult {
   payallUrl: string;
   amountUzs: number;
-}
-
-function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 // Postgres unique_violation specifically on partner_submissions.policyId —
@@ -135,10 +132,10 @@ export class InsurancePartnerService {
       submission = await this.createSubmission(
         policy.id,
         this.submissionsRepository.manager,
-        todayIsoDate(),
+        tashkentTodayIsoDate(),
       );
     }
-    const startDate = submission.startDate ?? todayIsoDate();
+    const startDate = submission.startDate ?? tashkentTodayIsoDate();
 
     const periodId = requestedPeriodId ?? (await this.resolveOneYearPeriodId());
     const applicant = {
