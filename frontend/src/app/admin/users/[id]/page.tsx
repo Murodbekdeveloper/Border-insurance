@@ -97,7 +97,7 @@ function UserDetailContent({ id }: { id: string }) {
         Foydalanuvchilarga qaytish
       </Link>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-2xl font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             {user.fullName.charAt(0).toUpperCase()}
@@ -124,10 +124,10 @@ function UserDetailContent({ id }: { id: string }) {
         </Button>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-6">
-        <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:col-span-2 dark:border-slate-800 dark:bg-slate-900">
           <h2 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Shaxsiy ma&apos;lumotlar</h2>
-          <dl className="grid grid-cols-4 gap-5 text-sm">
+          <dl className="grid grid-cols-2 gap-5 text-sm sm:grid-cols-4">
             <div>
               <dt className="text-slate-400">Telefon</dt>
               <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{user.phone ?? '-'}</dd>
@@ -188,7 +188,7 @@ function UserDetailContent({ id }: { id: string }) {
           })}
         </Section>
 
-        <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:col-span-2 dark:border-slate-800 dark:bg-slate-900">
           <h2 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">To&apos;lovlari ({payments.length})</h2>
           {payments.length === 0 && <p className="text-sm text-slate-400">To&apos;lov topilmadi</p>}
           <div className="flex flex-col gap-2">

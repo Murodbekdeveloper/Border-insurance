@@ -125,7 +125,7 @@ function MonthlyReportCard() {
         Har oyning 1-kunida barcha adminlarga avtomatik email yuboriladi
       </p>
       {preview && (
-        <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
             <p className="text-xs text-slate-400">{preview.monthLabel}</p>
             <p className="font-semibold text-slate-800 dark:text-slate-100">{formatCurrency(preview.revenue)}</p>
@@ -157,11 +157,11 @@ function SettingsContent() {
       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Sozlamalar</h1>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Profilingiz, parolingiz va hisobot sozlamalari</p>
 
-      <div className="mt-6 grid grid-cols-2 gap-6">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <ProfileForm />
         <PasswordForm />
       </div>
-      <div className="mt-6 grid grid-cols-2 gap-6">
+      <div className="mt-6 grid grid-cols-1 gap-6">
         <MonthlyReportCard />
       </div>
     </>

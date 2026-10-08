@@ -78,12 +78,12 @@ function PoliciesContent() {
 
   return (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">So&apos;rovlar</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Jami {total} ta yuborilgan OSAGO so&apos;rovi</p>
         </div>
-        <Button variant="outline" isLoading={exporting} onClick={handleExport} className="px-4 py-2 text-sm">
+        <Button variant="outline" isLoading={exporting} onClick={handleExport} className="self-start px-4 py-2 text-sm sm:self-auto">
           CSV eksport
         </Button>
       </div>

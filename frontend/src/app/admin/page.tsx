@@ -64,20 +64,20 @@ function AdminContent() {
         Umumiy statistika
       </p>
 
-      <div className="mt-6 grid grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
         <StatTile label="Foydalanuvchilar" value={stats ? String(stats.totalUsers) : '-'} numericValue={stats?.totalUsers} delay={0} />
         <StatTile label="Umumiy tushum" value={stats ? formatCurrency(stats.totalRevenue) : '-'} numericValue={stats?.totalRevenue} formatter={formatCurrency} delay={40} />
         <StatTile label="Faol (to'langan) so'rovlar" value={stats ? String(stats.activePolicies) : '-'} numericValue={stats?.activePolicies} delay={80} />
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-4">
+      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
         <StatTile label="Bugun ro'yxatdan o'tganlar" value={dashboard ? String(dashboard.newUsersToday) : '-'} numericValue={dashboard?.newUsersToday} delay={120} />
         <StatTile label="Shu hafta ro'yxatdan o'tganlar" value={dashboard ? String(dashboard.newUsersThisWeek) : '-'} numericValue={dashboard?.newUsersThisWeek} delay={160} />
         <StatTile label="Muddati yaqinlashgan so'rovlar" value={dashboard ? String(dashboard.expiringPoliciesCount) : '-'} numericValue={dashboard?.expiringPoliciesCount} delay={200} />
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-6">
-        <div className="col-span-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <div className="sm:col-span-2">
           {dashboard && (
             <RevenueBarChart key={months} data={dashboard.monthlyRevenue} months={months} onMonthsChange={setMonths} />
           )}
@@ -87,7 +87,7 @@ function AdminContent() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <QuickLinkCard
           href="/admin/users"
           title="Foydalanuvchilar"

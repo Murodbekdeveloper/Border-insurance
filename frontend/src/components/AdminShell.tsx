@@ -32,15 +32,17 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-sm font-black text-white dark:bg-slate-700">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-sm font-black text-white dark:bg-slate-700">
               A
             </div>
-            <span className="text-base font-bold text-slate-900 dark:text-slate-100">OSAGO Admin</span>
+            <span className="hidden text-base font-bold text-slate-900 sm:block dark:text-slate-100">OSAGO Admin</span>
           </div>
-          <div className="flex items-center gap-4">
-            <GlobalSearch />
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="hidden sm:block">
+              <GlobalSearch />
+            </div>
             <ThemeToggle />
             <Link
               href="/admin/settings"
@@ -67,14 +69,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </button>
           </div>
         </div>
-        <nav className="flex gap-1 px-6">
+        <nav className="flex gap-1 overflow-x-auto px-4 sm:px-6">
           {(admin?.role === 'superadmin' ? [...NAV_ITEMS, SUPERADMIN_NAV_ITEM] : NAV_ITEMS).map((item) => {
             const isActive = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
                   isActive
                     ? 'border-slate-800 text-slate-900 dark:border-slate-200 dark:text-slate-100'
                     : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
@@ -86,7 +88,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           })}
         </nav>
       </header>
-      <main className="px-6 py-10 lg:px-14 lg:py-12">
+      <main className="px-4 py-8 sm:px-6 sm:py-10 lg:px-14 lg:py-12">
         <div className="mx-auto max-w-6xl">{children}</div>
       </main>
     </div>

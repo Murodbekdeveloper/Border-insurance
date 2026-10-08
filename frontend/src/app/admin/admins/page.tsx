@@ -50,7 +50,7 @@ function CreateAdminForm({ onCreated }: { onCreated: () => void }) {
   return (
     <form onSubmit={onSubmit} className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
       <h2 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Yangi administrator qo&apos;shish</h2>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input label="F.I.O." required value={fullName} onChange={(e) => setFullName(e.target.value)} />
         <Input label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         <PasswordInput label="Parol" required value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -115,7 +115,7 @@ function AdminsContent() {
       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Administratorlar</h1>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Boshqaruv paneliga kirish huquqiga ega xodimlar</p>
 
-      <div className="mt-6 grid grid-cols-2 gap-6">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <CreateAdminForm onCreated={load} />
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
