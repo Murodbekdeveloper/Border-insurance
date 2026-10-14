@@ -58,13 +58,19 @@ export const CAR_MODELS_BY_BRAND: Record<string, string[]> = {
   KamAZ: ['5320', '65115', '43118'],
   MAN: ['TGX', 'TGS', 'TGL'],
   Scania: ['R-series', 'P-series'],
+  // NHTSA's vPIC database is US-market-only, so it has no entries for
+  // Volvo Trucks' European/global lineup (FH, FM, ...) — only this curated
+  // list covers them. A completely separate brand from "Volvo" (passenger
+  // cars) despite the shared name prefix; see findBrand's longest-match
+  // comment for why that distinction matters here.
+  'Volvo Truck': ['FH', 'FM', 'FMX', 'FL', 'FE'],
 };
 
 export const CAR_BRANDS = Object.keys(CAR_MODELS_BY_BRAND);
 
 // Butun brendi yuk mashinasi/og'ir texnika bo'lgan brendlar — shu brenddagi
 // har qanday model "og'ir" hisoblanadi.
-const HEAVY_VEHICLE_BRANDS = new Set<string>(['Isuzu', 'GAZ', 'KamAZ', 'MAN', 'Scania']);
+const HEAVY_VEHICLE_BRANDS = new Set<string>(['Isuzu', 'GAZ', 'KamAZ', 'MAN', 'Scania', 'Volvo Truck']);
 
 // Aksariyat modeli yengil avtomobil bo'lgan brendlarda ham ayrim aniq
 // modellar (furgon/pikap/yuk mashinasi) og'ir hisoblanadi — shuning uchun
@@ -80,13 +86,24 @@ const HEAVY_VEHICLE_MODELS = new Set<string>([
   'Toyota Hilux',
 ]);
 
+// Picks the longest (most specific) CAR_BRANDS entry matching the start of
+// fullModelValue, not just the first one in list order — needed because one
+// brand name can be a prefix of another, unrelated brand (e.g. "Volvo"
+// passenger cars vs. "Volvo Truck", a completely different, heavy-vehicle
+// manufacturer). A first-match search would stop at "Volvo" for a value
+// like "Volvo Truck FH" and misclassify a semi-truck as a light car.
+function findBrand(fullModelValue: string): string | undefined {
+  const matches = CAR_BRANDS.filter(
+    (b) => fullModelValue === b || fullModelValue.startsWith(`${b} `),
+  );
+  return matches.sort((a, b) => b.length - a.length)[0];
+}
+
 export function getVehicleDefaultsForModel(fullModelValue: string): {
   vehicleType: 'yengil_avtomobil' | 'yuk_mashinasi';
   weightCategory: 'yengil' | 'og\'ir';
 } {
-  const brand = CAR_BRANDS.find(
-    (b) => fullModelValue === b || fullModelValue.startsWith(`${b} `),
-  );
+  const brand = findBrand(fullModelValue);
   const isHeavy =
     (brand && HEAVY_VEHICLE_BRANDS.has(brand)) ||
     HEAVY_VEHICLE_MODELS.has(fullModelValue);
@@ -111,5 +128,5 @@ export function getWeightCategoryForVehicleType(vehicleType: string): 'yengil' |
 }
 
 export function guessBrand(value: string): string | null {
-  return CAR_BRANDS.find((b) => value === b || value.startsWith(`${b} `)) ?? null;
+  return findBrand(value) ?? null;
 }
