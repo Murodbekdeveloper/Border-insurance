@@ -396,8 +396,8 @@ export class ApexBoxService {
 
   // Mirrors the relevant subset of buildCreatePolicyRequest's fields —
   // Apex_Box's /osago_calculation only wants owner/driver passportData,
-  // the vehicle's plate/tech-passport, and the cost fields that affect the
-  // premium, not the full contract payload.
+  // the vehicle's plate/tech-passport/type, and the cost fields that affect
+  // the premium, not the full contract payload.
   private buildCalculatePremiumRequest(
     policy: InsurancePolicy,
     user: User,
@@ -448,6 +448,11 @@ export class ApexBoxService {
           seria: policy.vehicle.techPassportSeries,
         },
         govNumber: policy.vehicle.plateNumber,
+        // See the module-level CONFIRMED 2026-10-14 comment in
+        // apex-box.types.ts — without this, Asia Insurance tried to derive
+        // the vehicle type from govNumber against their own Uzbek registry,
+        // which fails outright for a genuinely foreign-registered plate.
+        typeId: VEHICLE_TYPE_ID_MAP[policy.vehicle.vehicleType] ?? '1',
       },
       drivers,
     };

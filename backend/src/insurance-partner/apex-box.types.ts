@@ -17,13 +17,15 @@
 // пустым" — PINFL must be an EMPTY STRING for a foreign citizen, not
 // omitted and not a placeholder like all-zeros.
 //
-// NOT YET CONFIRMED: whether `vehicle.govNumber`/`techPassport` can be
-// anything other than a real Uzbek plate/tech-passport for a genuinely
-// foreign-registered vehicle — the spec marks these required with no
-// documented exception (unlike pinfl's explicit foreign-citizen carve-out).
-// Until Asia Insurance confirms otherwise, treat foreign-*registered*
-// vehicles (not just foreign citizens) as still unsupported — see
-// RegistrationCountry.FOREIGN handling in InsurancePartnerService.
+// CONFIRMED 2026-10-14: a genuinely foreign-registered vehicle (e.g. a
+// Kyrgyzstan plate) failed /osago_calculation with "Apex_Box: Ошибка в
+// получении типа TC" — Asia Insurance was deriving the vehicle type from
+// `govNumber` against their own (Uzbek) registry, which has no entry for a
+// foreign plate. Asia Insurance has since added `vehicle.typeId` to
+// /osago_calculation's own spec/Postman collection (it already existed on
+// /osago, see VEHICLE_TYPE_ID_MAP) specifically so callers can supply it
+// directly instead of relying on that lookup — see
+// ApexBoxService.buildCalculatePremiumRequest.
 
 // CONFIRMED 2026-09-15 against Asia Insurance's own Swagger UI: this field
 // is typed `integer`, not the string we were sending ("2" instead of 2) —
@@ -213,6 +215,7 @@ export interface CalculatePremiumRequest {
   vehicle: {
     techPassport: { number: string; seria: string };
     govNumber: string;
+    typeId: string;
   };
   drivers: { passportData: ApexBoxPassportData }[];
 }
