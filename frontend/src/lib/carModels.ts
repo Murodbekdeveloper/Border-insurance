@@ -64,13 +64,17 @@ export const CAR_MODELS_BY_BRAND: Record<string, string[]> = {
   // cars) despite the shared name prefix; see findBrand's longest-match
   // comment for why that distinction matters here.
   'Volvo Truck': ['FH', 'FM', 'FMX', 'FL', 'FE'],
+  // Not sold in the US either (PACCAR's DAF brand is Europe/CIS-only —
+  // its US range is sold as Kenworth/Peterbilt instead), so same NHTSA gap
+  // as Volvo Truck above.
+  DAF: ['XF', 'CF', 'LF'],
 };
 
 export const CAR_BRANDS = Object.keys(CAR_MODELS_BY_BRAND);
 
 // Butun brendi yuk mashinasi/og'ir texnika bo'lgan brendlar — shu brenddagi
 // har qanday model "og'ir" hisoblanadi.
-const HEAVY_VEHICLE_BRANDS = new Set<string>(['Isuzu', 'GAZ', 'KamAZ', 'MAN', 'Scania', 'Volvo Truck']);
+const HEAVY_VEHICLE_BRANDS = new Set<string>(['Isuzu', 'GAZ', 'KamAZ', 'MAN', 'Scania', 'Volvo Truck', 'DAF']);
 
 // Aksariyat modeli yengil avtomobil bo'lgan brendlarda ham ayrim aniq
 // modellar (furgon/pikap/yuk mashinasi) og'ir hisoblanadi — shuning uchun
