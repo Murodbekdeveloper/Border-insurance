@@ -38,7 +38,7 @@ export const CAR_MODELS_BY_BRAND: Record<string, string[]> = {
   JAC: ['JS4', 'JS8', 'S3'],
   GAC: ['GS4', 'GS8', 'Emzoom'],
   MG: ['ZS', 'HS', '5'],
-  'Mercedes-Benz': ['C-Class', 'E-Class', 'S-Class', 'GLE', 'GLC', 'Sprinter', 'Vito', 'Actros'],
+  'Mercedes-Benz': ['C-Class', 'E-Class', 'S-Class', 'GLE', 'GLC', 'Sprinter', 'Vito', 'Actros', 'Arocs'],
   BMW: ['3 Series', '5 Series', 'X5', 'X3', '7 Series'],
   Audi: ['A4', 'A6', 'Q5', 'Q7'],
   Volkswagen: ['Passat', 'Tiguan', 'Polo', 'Jetta', 'Golf'],
@@ -57,7 +57,7 @@ export const CAR_MODELS_BY_BRAND: Record<string, string[]> = {
   GAZ: ['Gazelle Next', 'Gazelle Business', 'Sobol'],
   KamAZ: ['5320', '65115', '43118'],
   MAN: ['TGX', 'TGS', 'TGL'],
-  Scania: ['R-series', 'P-series'],
+  Scania: ['R-series', 'P-series', 'S-series'],
   // NHTSA's vPIC database is US-market-only, so it has no entries for
   // Volvo Trucks' European/global lineup (FH, FM, ...) — only this curated
   // list covers them. A completely separate brand from "Volvo" (passenger
@@ -68,13 +68,33 @@ export const CAR_MODELS_BY_BRAND: Record<string, string[]> = {
   // its US range is sold as Kenworth/Peterbilt instead), so same NHTSA gap
   // as Volvo Truck above.
   DAF: ['XF', 'CF', 'LF'],
+  Iveco: ['S-Way', 'Stralis', 'Trakker', 'Eurocargo'],
+  // "Renault Trucks" (the commercial-vehicle arm, Volvo Group-owned) is a
+  // separate manufacturer from "Renault" passenger cars above, not just a
+  // naming variant — kept as its own brand for the same reason as "Volvo
+  // Truck"/"Hyundai Trucks" (see findBrand's longest-match comment).
+  'Renault Trucks': ['T', 'C', 'K'],
+  Hino: ['300', '500', '700'],
+  // China's best-selling heavy-truck brands (Sinotruk/FAW Jiefang/Shacman/
+  // Foton/Dongfeng are consistently the top 5 by domestic sales) — common
+  // on Central Asian/CIS freight routes, never sold in the US.
+  Sinotruk: ['HOWO', 'Sitrak'],
+  'FAW Jiefang': ['J6', 'J6L', 'J6M', 'J7'],
+  Shacman: ['X3000', 'X5000', 'X6000'],
+  Foton: ['Auman'],
+  Dongfeng: ['Tianlong', 'Titan', 'Balong'],
+  'Hyundai Trucks': ['Xcient', 'Trago', 'Mighty', 'HD'],
 };
 
 export const CAR_BRANDS = Object.keys(CAR_MODELS_BY_BRAND);
 
 // Butun brendi yuk mashinasi/og'ir texnika bo'lgan brendlar — shu brenddagi
 // har qanday model "og'ir" hisoblanadi.
-const HEAVY_VEHICLE_BRANDS = new Set<string>(['Isuzu', 'GAZ', 'KamAZ', 'MAN', 'Scania', 'Volvo Truck', 'DAF']);
+const HEAVY_VEHICLE_BRANDS = new Set<string>([
+  'Isuzu', 'GAZ', 'KamAZ', 'MAN', 'Scania', 'Volvo Truck', 'DAF', 'Iveco',
+  'Renault Trucks', 'Hino', 'Sinotruk', 'FAW Jiefang', 'Shacman', 'Foton',
+  'Dongfeng', 'Hyundai Trucks',
+]);
 
 // Aksariyat modeli yengil avtomobil bo'lgan brendlarda ham ayrim aniq
 // modellar (furgon/pikap/yuk mashinasi) og'ir hisoblanadi — shuning uchun
@@ -83,6 +103,7 @@ const HEAVY_VEHICLE_MODELS = new Set<string>([
   'Mercedes-Benz Sprinter',
   'Mercedes-Benz Vito',
   'Mercedes-Benz Actros',
+  'Mercedes-Benz Arocs',
   'Ford Transit',
   'Ford Ranger',
   'UAZ Buxanka (452)',
