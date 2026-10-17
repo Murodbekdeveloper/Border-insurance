@@ -1,6 +1,7 @@
 import { COUNTRY_NAME_EN } from './country-names-en';
 import { COUNTRY_NAME_KY } from './country-names-ky';
 import { COUNTRY_NAME_ZH } from './country-names-zh';
+import { COUNTRY_NAME_NATIVE } from './country-names-native';
 
 // Asia Insurance's own reference endpoints (both osago_v3 and Apex_Box)
 // return these names in Russian only — confirmed against their live
@@ -444,26 +445,41 @@ const RELATIVE_MAPS: MultiLangMaps = {
   zh: RELATIVE_NAME_ZH,
 };
 
-export function translateCountryItems<T extends { id: number | string; name: string }>(
-  items: T[],
-): WithMultiLangNames<T>[] {
-  return translateMultiLang(items, (item) => Number(item.id), COUNTRY_MAPS);
+// Unlike translateMultiLang's nameEn/nameKy/nameZh (a translation into one
+// of this app's 5 UI languages), nameNative is the country's own name in
+// its own titular language — shown regardless of the active UI language
+// (see resident-type/page.tsx's citizenship picker). Countries-only; the
+// other three reference lists (durations/periods/relatives) aren't
+// real-world named entities with a "native language" of their own.
+export function translateCountryItems<
+  T extends { id: number | string; name: string },
+>(items: T[]): (WithMultiLangNames<T> & { nameNative: string })[] {
+  return translateMultiLang(items, (item) => Number(item.id), COUNTRY_MAPS).map(
+    (item) => ({
+      ...item,
+      nameNative: COUNTRY_NAME_NATIVE[Number(item.id)] ?? item.name,
+    }),
+  );
 }
 
 export function translateForeignVehicleDurationItems<
   T extends { id: number | string; name: string },
 >(items: T[]): WithMultiLangNames<T>[] {
-  return translateMultiLang(items, (item) => Number(item.id), FOREIGN_VEHICLE_DURATION_MAPS);
+  return translateMultiLang(
+    items,
+    (item) => Number(item.id),
+    FOREIGN_VEHICLE_DURATION_MAPS,
+  );
 }
 
-export function translatePeriodItems<T extends { period: number; name: string }>(
-  items: T[],
-): WithMultiLangNames<T>[] {
+export function translatePeriodItems<
+  T extends { period: number; name: string },
+>(items: T[]): WithMultiLangNames<T>[] {
   return translateMultiLang(items, (item) => item.period, PERIOD_MAPS);
 }
 
-export function translateRelativeItems<T extends { relative: number; name: string }>(
-  items: T[],
-): WithMultiLangNames<T>[] {
+export function translateRelativeItems<
+  T extends { relative: number; name: string },
+>(items: T[]): WithMultiLangNames<T>[] {
   return translateMultiLang(items, (item) => item.relative, RELATIVE_MAPS);
 }

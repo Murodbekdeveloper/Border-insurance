@@ -11,8 +11,13 @@ const NOT_CONFIGURED_CODE = 'APEX_BOX_NOT_CONFIGURED';
 // backend for both /countries and /foreign-vehicle-durations — see
 // lib/i18n/multiLang.ts's localizedName()/localizedSearchText() for how the
 // frontend picks the right one to display/search by the active UI locale.
+// nameNative (countries only — see backend's translateCountryItems) is the
+// country's own name in its own titular language, e.g. "O‘zbekiston" — used
+// instead of localizedName() so the citizenship picker doesn't depend on
+// the active UI language.
 export interface ApexBoxReferenceOption extends MultiLangNamed {
   id: number | string;
+  nameNative?: string;
 }
 
 async function getReferenceList<T>(path: string): Promise<T[]> {

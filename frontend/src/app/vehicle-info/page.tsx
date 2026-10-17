@@ -542,8 +542,11 @@ function VehicleInfoContent() {
               label={t('vehicleInfo.citizenshipLabel')}
               options={countries.map((c) => ({
                 value: String(c.id),
-                label: localizedName(c, locale),
-                searchText: localizedSearchText(c),
+                // Each country shown in its own national language (e.g.
+                // "O‘zbekiston") rather than translated into the active UI
+                // language — see ApexBoxReferenceOption's nameNative comment.
+                label: c.nameNative ?? localizedName(c, locale),
+                searchText: `${localizedSearchText(c)} ${c.nameNative ?? ''}`.trim(),
               }))}
               placeholder={countriesLoading ? t('common.loading') : t('vehicleInfo.citizenshipPlaceholder')}
               disabled={countriesLoading}
