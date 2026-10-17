@@ -8,6 +8,7 @@ export const en: Dictionary = {
     loading: 'Loading...',
     select: 'Select',
     cancel: 'Cancel',
+    clear: 'Clear',
     copyright: '© {year} OSAGO Online. All rights reserved.',
     noResults: 'No results found',
   },

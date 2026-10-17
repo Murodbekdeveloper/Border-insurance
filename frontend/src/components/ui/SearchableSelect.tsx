@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
@@ -56,6 +56,7 @@ export function SearchableSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const inputId = id ?? name;
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // If `value` changes from outside while the field is open (mid-filter),
   // close it on the spot — adjusted during render (React's documented
@@ -97,27 +98,53 @@ export function SearchableSelect({
           {label}
         </label>
       )}
-      <input
-        id={inputId}
-        name={name}
-        autoComplete="off"
-        disabled={disabled}
-        value={displayValue}
-        placeholder={placeholder}
-        onFocus={() => {
-          setIsOpen(true);
-          setQuery('');
-        }}
-        onChange={(e) => setQuery(e.target.value)}
-        onBlur={() => {
-          setIsOpen(false);
-          onBlur?.();
-        }}
-        className={clsx(
-          DROPDOWN_INPUT_CLASS,
-          error ? 'border-red-400' : 'border-slate-300 dark:border-slate-700',
+      <div className="relative">
+        <input
+          ref={inputRef}
+          id={inputId}
+          name={name}
+          autoComplete="off"
+          disabled={disabled}
+          value={displayValue}
+          placeholder={placeholder}
+          onFocus={() => {
+            setIsOpen(true);
+            setQuery('');
+          }}
+          onChange={(e) => setQuery(e.target.value)}
+          onBlur={() => {
+            setIsOpen(false);
+            onBlur?.();
+          }}
+          className={clsx(
+            DROPDOWN_INPUT_CLASS,
+            value && !isOpen && 'pr-9',
+            error ? 'border-red-400' : 'border-slate-300 dark:border-slate-700',
+          )}
+        />
+        {/* Explicit way to clear a wrong selection and start typing a new
+            one, rather than relying on the user noticing that clicking the
+            field (onFocus above) already empties it for a fresh search. */}
+        {value && !isOpen && (
+          <button
+            type="button"
+            aria-label={t('common.clear')}
+            tabIndex={-1}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onChange('');
+              setQuery('');
+              setIsOpen(true);
+              inputRef.current?.focus();
+            }}
+            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         )}
-      />
+      </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
 
       {isOpen && (

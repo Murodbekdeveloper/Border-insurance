@@ -11,6 +11,7 @@ export const uz = {
     loading: 'Yuklanmoqda...',
     select: 'Tanlang',
     cancel: 'Bekor qilish',
+    clear: 'Tozalash',
     copyright: '© {year} OSAGO Online. Barcha huquqlar himoyalangan.',
     noResults: 'Hech narsa topilmadi',
   },

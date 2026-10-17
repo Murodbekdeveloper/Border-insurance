@@ -8,6 +8,7 @@ export const ky: Dictionary = {
     loading: 'Жүктөлүүдө...',
     select: 'Тандаңыз',
     cancel: 'Жокко чыгаруу',
+    clear: 'Тазалоо',
     copyright: '© {year} OSAGO Online. Бардык укуктар корголгон.',
     noResults: 'Эч нерсе табылган жок',
   },

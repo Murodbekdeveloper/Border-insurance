@@ -8,6 +8,7 @@ export const zh: Dictionary = {
     loading: '加载中...',
     select: '请选择',
     cancel: '取消',
+    clear: '清除',
     copyright: '© {year} OSAGO Online. 保留所有权利。',
     noResults: '未找到结果',
   },

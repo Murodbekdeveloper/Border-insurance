@@ -8,6 +8,7 @@ export const ru: Dictionary = {
     loading: 'Загрузка...',
     select: 'Выберите',
     cancel: 'Отмена',
+    clear: 'Очистить',
     copyright: '© {year} OSAGO Online. Все права защищены.',
     noResults: 'Ничего не найдено',
   },
