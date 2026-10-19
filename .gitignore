@@ -1,13 +1,19 @@
 # dependencies
 node_modules/
 
-# env files — real secrets live only in these, never commit them
+# env files — real secrets live only in these, never commit them.
+# .env.example files hold no real secrets (every value is a placeholder
+# like "change_me" or blank) but are kept out of the repo anyway so an
+# ".env*" glob can't ever be second-guessed file by file.
 .env
 .env.local
 .env.*.local
+.env.example
 backend/.env
 backend/.env.test
+backend/.env.example
 frontend/.env.local
+frontend/.env.example
 
 # build output
 backend/dist/
