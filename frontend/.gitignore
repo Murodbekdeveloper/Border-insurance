@@ -38,6 +38,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Local-only reference PDF, not needed for the app to build/run
+/pdfshablon
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
