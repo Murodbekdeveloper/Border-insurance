@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { VehicleFormData, getVehicleSchema } from '@/lib/validation/schemas';
 import { CITIES, VEHICLE_TYPES } from '@/lib/constants';
 import { getVehicleDefaultsForModel, getWeightCategoryForVehicleType } from '@/lib/carModels';
+import { DEFAULT_PLATE_NUMBER_EXAMPLE, PLATE_NUMBER_EXAMPLE } from '@/lib/plateFormats';
 import { maskAlnumUpper, maskDigits, maskPhoneUZ, maskPlateNumber, maskYear } from '@/lib/masks';
 import { todayLocalDateString } from '@/lib/utils';
 import { createVehicle, lookupVehicle } from '@/lib/api/vehicles';
@@ -151,6 +152,18 @@ function VehicleInfoContent() {
   // profilida hali yo'q bo'lsa, shu yerda so'raymiz.
   const needsCitizenship = isForeign && !user?.citizenshipId;
   const [citizenshipId, setCitizenshipId] = useState('');
+  // Prefers the applicant's already-known citizenship (set earlier on
+  // /resident-type) over whatever's being picked right now in this form, so
+  // the example below is right even when the citizenship field itself isn't
+  // shown here (needsCitizenship === false).
+  const effectiveCitizenshipId = user?.citizenshipId || citizenshipId;
+  // The plate number example should match a format the applicant actually
+  // recognizes — Uzbekistan's for a locally-registered vehicle, or their
+  // own country's for a foreign-registered one (see lib/plateFormats.ts for
+  // which countries are covered and why).
+  const plateNumberPlaceholder = isForeign
+    ? PLATE_NUMBER_EXAMPLE[Number(effectiveCitizenshipId)] ?? DEFAULT_PLATE_NUMBER_EXAMPLE
+    : '01 A 123 AA';
   const [countries, setCountries] = useState<ApexBoxReferenceOption[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
   const [countriesError, setCountriesError] = useState(false);
@@ -362,7 +375,7 @@ function VehicleInfoContent() {
 
         <Input
           label={t('vehicleInfo.plateNumber')}
-          placeholder="01 A 123 AA"
+          placeholder={plateNumberPlaceholder}
           error={errors.plateNumber?.message}
           {...register('plateNumber')}
           onChange={(e) => setValue('plateNumber', maskPlateNumber(e.target.value), { shouldValidate: true, shouldDirty: true })}
