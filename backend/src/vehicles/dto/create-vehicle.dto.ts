@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsInt,
   IsOptional,
+  IsPhoneNumber,
   IsString,
   Matches,
   Max,
@@ -19,7 +20,6 @@ import {
   WeightCategory,
 } from '../entities/vehicle.entity';
 
-const PHONE_REGEX = /^\+998[0-9]{9}$/;
 const ALPHANUMERIC_REGEX = /^[A-Za-z0-9]+$/;
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -94,8 +94,13 @@ export class CreateVehicleDto {
   @MinLength(1)
   city?: string;
 
+  // Vehicle/policy contact number — unlike the account/login phone (always
+  // Uzbek, for this app's own SMS/OTP), a non-resident may give this in
+  // their own country's format, so this accepts any valid international
+  // number (it must include the "+<calling code>" prefix) rather than
+  // being locked to +998.
   @ApiProperty({ example: '+998901234567' })
-  @Matches(PHONE_REGEX)
+  @IsPhoneNumber()
   phone: string;
 
   // Asia Insurance's /save-policy contract needs a vehicle `owner`

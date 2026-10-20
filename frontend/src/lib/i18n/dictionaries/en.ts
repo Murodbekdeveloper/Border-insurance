@@ -9,6 +9,8 @@ export const en: Dictionary = {
     select: 'Select',
     cancel: 'Cancel',
     clear: 'Clear',
+    search: 'Search...',
+    selectCountry: 'Select country code',
     copyright: '© {year} OSAGO Online. All rights reserved.',
     noResults: 'No results found',
   },

@@ -9,6 +9,8 @@ export const ky: Dictionary = {
     select: 'Тандаңыз',
     cancel: 'Жокко чыгаруу',
     clear: 'Тазалоо',
+    search: 'Издөө...',
+    selectCountry: 'Өлкө кодун тандаңыз',
     copyright: '© {year} OSAGO Online. Бардык укуктар корголгон.',
     noResults: 'Эч нерсе табылган жок',
   },

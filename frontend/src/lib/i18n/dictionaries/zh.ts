@@ -9,6 +9,8 @@ export const zh: Dictionary = {
     select: '请选择',
     cancel: '取消',
     clear: '清除',
+    search: '搜索...',
+    selectCountry: '选择国家区号',
     copyright: '© {year} OSAGO Online. 保留所有权利。',
     noResults: '未找到结果',
   },

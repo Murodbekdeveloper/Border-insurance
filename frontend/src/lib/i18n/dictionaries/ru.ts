@@ -9,6 +9,8 @@ export const ru: Dictionary = {
     select: 'Выберите',
     cancel: 'Отмена',
     clear: 'Очистить',
+    search: 'Поиск...',
+    selectCountry: 'Выберите код страны',
     copyright: '© {year} OSAGO Online. Все права защищены.',
     noResults: 'Ничего не найдено',
   },

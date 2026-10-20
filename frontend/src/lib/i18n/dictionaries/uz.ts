@@ -12,6 +12,8 @@ export const uz = {
     select: 'Tanlang',
     cancel: 'Bekor qilish',
     clear: 'Tozalash',
+    search: 'Qidirish...',
+    selectCountry: 'Davlat kodini tanlang',
     copyright: '© {year} OSAGO Online. Barcha huquqlar himoyalangan.',
     noResults: 'Hech narsa topilmadi',
   },

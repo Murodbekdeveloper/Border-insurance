@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidPhoneNumber } from 'libphonenumber-js';
 import { isNotFutureLocalDate } from '@/lib/utils';
 import type { Translator } from '@/lib/i18n/useTranslation';
 
@@ -83,7 +84,15 @@ export function getVehicleSchema(t: Translator) {
       // o'tgan mashinalar uchun Asia Insurance'ning osago_v3 API'sida bunday
       // maydon umuman yo'q.
       city: z.string().optional(),
-      phone: z.string().regex(phoneRegex, t('validation.phoneFormat')),
+      // Unlike the account/login phone (register & profile schemas below,
+      // which stay +998-only — tied to this app's own Uzbek SMS/OTP
+      // delivery), this is the vehicle/policy contact number, which a
+      // non-resident may legitimately give in their own country's format —
+      // validated against libphonenumber-js's real per-country rules
+      // instead of a hardcoded Uzbek regex.
+      phone: z
+        .string()
+        .refine((val) => isValidPhoneNumber(val), { message: t('validation.phoneFormat') }),
       // Sug'urta kompaniyasi transport egasi ma'lumotini alohida talab qiladi —
       // odatda sug'urta oluvchining o'zi, shuning uchun standart holatda true.
       // false bo'lganda quyidagi uchta maydon to'ldirilishi shart.

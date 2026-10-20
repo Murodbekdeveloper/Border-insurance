@@ -8,7 +8,7 @@ import { VehicleFormData, getVehicleSchema } from '@/lib/validation/schemas';
 import { CITIES, VEHICLE_TYPES } from '@/lib/constants';
 import { getVehicleDefaultsForModel, getWeightCategoryForVehicleType } from '@/lib/carModels';
 import { DEFAULT_PLATE_NUMBER_EXAMPLE, PLATE_NUMBER_EXAMPLE } from '@/lib/plateFormats';
-import { maskAlnumUpper, maskDigits, maskPhoneUZ, maskPlateNumber, maskYear } from '@/lib/masks';
+import { maskAlnumUpper, maskDigits, maskPlateNumber, maskYear } from '@/lib/masks';
 import { todayLocalDateString } from '@/lib/utils';
 import { createVehicle, lookupVehicle } from '@/lib/api/vehicles';
 import { extractVehicleDocument, OcrNotConfiguredError } from '@/lib/api/ocr';
@@ -24,6 +24,7 @@ import { AuthGuard } from '@/components/AuthGuard';
 import { WizardShell } from '@/components/WizardShell';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { PhoneInput } from '@/components/ui/PhoneInput';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { BrandModelFields } from '@/components/ui/BrandModelFields';
@@ -60,7 +61,7 @@ function VehicleInfoContent() {
     defaultValues: vehicle ?? {
       weightCategory: 'yengil',
       registrationCountry: residentType === 'non_resident' ? 'Xorij' : 'UZ',
-      phone: user?.phone && user.phone.startsWith('+998') ? user.phone : '+998',
+      phone: user?.phone || '+998',
       ownerIsApplicant: true,
     },
   });
@@ -569,13 +570,18 @@ function VehicleInfoContent() {
           )
         )}
 
-        <Input
-          label={t('vehicleInfo.phone')}
-          placeholder="+998901234567"
-          inputMode="numeric"
-          error={errors.phone?.message}
-          {...register('phone')}
-          onChange={(e) => setValue('phone', maskPhoneUZ(e.target.value), { shouldValidate: true, shouldDirty: true })}
+        <Controller
+          control={control}
+          name="phone"
+          render={({ field }) => (
+            <PhoneInput
+              label={t('vehicleInfo.phone')}
+              error={errors.phone?.message}
+              value={field.value}
+              onChange={(v) => setValue('phone', v, { shouldValidate: true, shouldDirty: true })}
+              onBlur={field.onBlur}
+            />
+          )}
         />
 
         <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:p-6">
